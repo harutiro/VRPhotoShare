@@ -31,7 +31,7 @@ export const UploadPage = () => {
 
     const handleUpload = async () => {
         if (files.length === 0) {
-            notifications.show({ title: 'No files', message: 'Please select files to upload.', color: 'red' });
+            notifications.show({ title: 'ファイルがありません', message: 'アップロードするファイルを選択してください。', color: 'red' });
             return;
         }
 
@@ -48,7 +48,7 @@ export const UploadPage = () => {
                 throw new Error(errorData.error || 'Upload failed due to a server error.');
             }
 
-            notifications.show({ title: 'Success', message: 'All photos uploaded successfully!', color: 'green' });
+            notifications.show({ title: 'アップロード成功', message: 'すべての写真をアップロードしました！', color: 'green' });
             setFiles([]); // Clear selection
             
             // Navigate to the correct page after upload
@@ -59,7 +59,7 @@ export const UploadPage = () => {
             }
         } catch (error: any) {
             const errorMessage = error.response?.data?.error || error.message || 'An unknown error occurred.';
-            notifications.show({ title: 'Upload Error', message: errorMessage, color: 'red' });
+            notifications.show({ title: 'アップロードエラー', message: errorMessage, color: 'red' });
         } finally {
             setUploading(false);
         }
@@ -68,12 +68,12 @@ export const UploadPage = () => {
     return (
         <Container my="md">
             <Title order={2} mb="lg">
-                {custom_id ? `Upload Photos to Album` : 'Upload Photos'}
+                {custom_id ? `アルバムに写真をアップロード` : '写真をアップロード'}
             </Title>
             <Text c="dimmed" mb="lg">
                 {custom_id
-                    ? 'These photos will be added to the current album.'
-                    : 'Upload your photos here. They will be displayed on the homepage.'
+                    ? 'このアルバムに写真が追加されます。'
+                    : 'ここで写真をアップロードすると、ホームページに表示されます。'
                 }
             </Text>
             <Dropzone
@@ -81,8 +81,8 @@ export const UploadPage = () => {
                 onReject={(rejectedFiles) => {
                     console.log('rejected files', rejectedFiles);
                     notifications.show({
-                        title: 'File Rejected',
-                        message: 'Some files were rejected. Please ensure they are images and under 10MB.',
+                        title: 'ファイルが拒否されました',
+                        message: '一部のファイルが拒否されました。画像で10MB以下か確認してください。',
                         color: 'red'
                     });
                 }}
@@ -100,8 +100,8 @@ export const UploadPage = () => {
                         <IconPhoto size="3.2rem" stroke={1.5} />
                     </Dropzone.Idle>
                     <div>
-                        <Text size="xl" inline>Drag images here or click to select files</Text>
-                        <Text size="sm" c="dimmed" inline mt={7}>Attach as many files as you like, each file should not exceed 10MB.</Text>
+                        <Text size="xl" inline>画像をここにドラッグまたはクリックして選択</Text>
+                        <Text size="sm" c="dimmed" inline mt={7}>複数ファイルOK、1ファイル10MBまで</Text>
                     </div>
                 </Group>
             </Dropzone>
@@ -114,10 +114,10 @@ export const UploadPage = () => {
 
                     <Group justify="flex-end" mt="xl">
                         <Button variant="default" onClick={() => setFiles([])} disabled={uploading}>
-                            Clear selection
+                            選択をクリア
                         </Button>
                         <Button onClick={handleUpload} loading={uploading}>
-                            Upload {files.length} {files.length === 1 ? 'photo' : 'photos'}
+                            {files.length}枚の写真をアップロード
                         </Button>
                     </Group>
                 </>

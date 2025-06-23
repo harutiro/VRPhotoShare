@@ -220,18 +220,18 @@ export const AlbumViewPage = () => {
                   disabled={selectedPhotos.length === 0 || isZipping}
                   leftSection={<IconDownload size={14} />}
               >
-                  Download ({selectedPhotos.length})
+                  ダウンロード ({selectedPhotos.length})
               </Button>
-              <Button onClick={() => navigate(`/album/${custom_id}/upload`)}>Upload Photos</Button>
-              <Tooltip label="Copy album link to clipboard">
+              <Button onClick={() => navigate(`/album/${custom_id}/upload`)}>写真をアップロード</Button>
+              <Tooltip label="アルバムリンクをクリップボードにコピー">
                 <ActionIcon 
                   variant="default" 
                   size="lg" 
                   onClick={() => {
                     clipboard.copy(window.location.href);
                     notifications.show({
-                      title: 'Link Copied!',
-                      message: 'The album link has been copied to your clipboard.',
+                      title: 'リンクをコピーしました',
+                      message: 'アルバムリンクをクリップボードにコピーしました。',
                       color: 'green',
                     });
                   }}
@@ -243,7 +243,7 @@ export const AlbumViewPage = () => {
         </Group>
 
         {photos.length === 0 && !loading ? (
-          <Center><Text>This album is empty. Upload some photos!</Text></Center>
+          <Center><Text>このアルバムは空です。写真をアップロードしてください。</Text></Center>
         ) : (
           <Grid>
             {photos.map((photo) => (
@@ -255,13 +255,13 @@ export const AlbumViewPage = () => {
                           style={{ zIndex: 1 }}
                           checked={selectedPhotos.includes(photo.id)}
                           onChange={(e) => handleSelectionChange(photo.id, e.currentTarget.checked)}
-                          aria-label="Select photo"
+                          aria-label="写真を選択"
                       />
                        <ActionIcon variant="filled" color="red" radius="xl" size="sm"
                           pos="absolute" top={10} right={10}
                           style={{ zIndex: 1 }}
                           onClick={(e) => { e.stopPropagation(); handleDelete(photo.id); }}
-                          title="Delete Photo"
+                          title="写真を削除"
                       >
                           <IconTrash size={14} />
                       </ActionIcon>
@@ -280,6 +280,9 @@ export const AlbumViewPage = () => {
             ))}
           </Grid>
         )}
+        <Center mt="md">
+          <Button onClick={() => navigate(`/album/${custom_id}/upload`)}>写真をアップロード</Button>
+        </Center>
       </Container>
     </>
   );

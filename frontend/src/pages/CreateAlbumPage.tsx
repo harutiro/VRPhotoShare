@@ -12,8 +12,8 @@ export const CreateAlbumPage = () => {
   const handleCreate = async () => {
     if (!name.trim() || !customId.trim()) {
       notifications.show({
-        title: 'Input Error',
-        message: 'Album Name and Album ID are required.',
+        title: '入力エラー',
+        message: 'アルバム名とアルバムIDは必須です。',
         color: 'red',
       });
       return;
@@ -32,14 +32,14 @@ export const CreateAlbumPage = () => {
       }
 
       notifications.show({
-        title: 'Success!',
-        message: `Album "${name}" created successfully.`,
+        title: '作成成功',
+        message: `アルバム「${name}」を作成しました。`,
         color: 'green',
       });
       navigate(`/album/${customId}`);
     } catch (error: any) {
       notifications.show({
-        title: 'Creation Failed',
+        title: '作成失敗',
         message: error.message,
         color: 'red',
       });
@@ -51,26 +51,26 @@ export const CreateAlbumPage = () => {
   return (
     <Container size="sm" my="xl">
         <Paper shadow="md" p="xl" withBorder>
-            <Title order={2} ta="center" mb="lg">Create New Album</Title>
+            <Title order={2} ta="center" mb="lg">新しいアルバムを作成</Title>
             <Stack>
                 <TextInput
-                    label="Album Name"
-                    placeholder="e.g., Summer Vacation 2025"
+                    label="アルバム名"
+                    placeholder="例: 夏休み2025"
                     value={name}
                     onChange={(e) => setName(e.currentTarget.value)}
                     required
                 />
                 <TextInput
-                    label="Album ID"
-                    placeholder="e.g., summer-2025 (must be unique)"
-                    description="This ID will be used in the URL to share your album."
+                    label="アルバムID"
+                    placeholder="例: summer-2025（他と重複しないID）"
+                    description="このIDはURLでアルバムを共有する際に使います。"
                     value={customId}
                     onChange={(e) => setCustomId(e.currentTarget.value)}
                     required
                 />
                 <Group justify="flex-end" mt="md">
                     <Button onClick={handleCreate} loading={loading}>
-                        Create Album
+                        アルバム作成
                     </Button>
                 </Group>
             </Stack>
