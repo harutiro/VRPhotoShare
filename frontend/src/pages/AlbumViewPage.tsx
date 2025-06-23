@@ -143,6 +143,17 @@ export const AlbumViewPage = () => {
     }
   };
 
+  // すべて選択・すべて解除
+  const allSelected = photos.length > 0 && selectedPhotos.length === photos.length;
+  const isIndeterminate = selectedPhotos.length > 0 && selectedPhotos.length < photos.length;
+  const handleSelectAllChange = (checked: boolean) => {
+    if (checked) {
+      setSelectedPhotos(photos.map((p) => p.id));
+    } else {
+      setSelectedPhotos([]);
+    }
+  };
+
   if (loading) {
     return <Container my="md">{/* Skeleton loader */}</Container>;
   }
@@ -195,6 +206,13 @@ export const AlbumViewPage = () => {
           <Stack gap="xs">
               <Title order={2}>{album?.name}</Title>
               <Text c="dimmed">{photos.length} photos</Text>
+              <Checkbox
+                label="すべて選択"
+                checked={allSelected}
+                indeterminate={isIndeterminate}
+                onChange={(e) => handleSelectAllChange(e.currentTarget.checked)}
+                disabled={photos.length === 0}
+              />
           </Stack>
           <Group>
               <Button
