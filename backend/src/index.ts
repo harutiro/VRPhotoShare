@@ -2,6 +2,33 @@ import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
 import { Pool } from 'pg'
 import { cors } from 'hono/cors'
+import { Client as MinioClient } from 'minio'
+import { v4 as uuidv4 } from 'uuid'
+
+const MINIO_ROOT_USER = process.env.MINIO_ROOT_USER || 'minioadmin';
+const MINIO_ROOT_PASSWORD = process.env.MINIO_ROOT_PASSWORD || 'minioadmin123';
+const MINIO_BUCKET = process.env.MINIO_BUCKET || 'vrphotoshare';
+const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || 'minio';
+const MINIO_PORT = parseInt(process.env.MINIO_PORT || '9000', 10);
+const MINIO_USE_SSL = false;
+
+// アップロード用MinIOクライアント（Docker内部からアクセス）
+const minio = new MinioClient({
+  endPoint: MINIO_ENDPOINT,
+  port: MINIO_PORT,
+  useSSL: MINIO_USE_SSL,
+  accessKey: MINIO_ROOT_USER,
+  secretKey: MINIO_ROOT_PASSWORD,
+});
+
+// 署名付きURL生成用MinIOクライアント（外部からアクセス）
+const minioForPresigned = new MinioClient({
+  endPoint: MINIO_ENDPOINT,
+  port: MINIO_PORT,
+  useSSL: MINIO_USE_SSL,
+  accessKey: MINIO_ROOT_USER,
+  secretKey: MINIO_ROOT_PASSWORD,
+});
 
 const app = new Hono()
 
@@ -28,6 +55,17 @@ interface PhotoUpload {
 }
 
 // --- API Endpoints ---
+
+// 0. Get all albums
+app.get('/api/albums', async (c) => {
+  try {
+    const result = await pool.query('SELECT * FROM albums ORDER BY created_at DESC');
+    return c.json(result.rows);
+  } catch (error) {
+    console.error('Failed to fetch albums:', error);
+    return c.json({ error: 'Failed to fetch albums' }, 500);
+  }
+});
 
 // 1. Create a new album
 app.post('/api/albums', async (c) => {
@@ -86,10 +124,26 @@ app.post('/api/albums/:custom_id/photos', async (c) => {
 
     for (const photo of photos) {
       const { name, data } = photo;
-      await client.query(
-        'INSERT INTO photos (album_id, filename, image_data) VALUES ($1, $2, $3)',
-        [albumId, name, data]
-      );
+      const ext = name.split('.').pop();
+      const uuidName = `${uuidv4()}.${ext}`;
+      const buffer = Buffer.from(data, 'base64');
+      try {
+        await minio.putObject(MINIO_BUCKET, uuidName, buffer);
+      } catch (minioErr) {
+        await client.query('ROLLBACK');
+        console.error('MinIO error:', minioErr);
+        return c.json({ error: 'MinIOへの保存に失敗しました', detail: String(minioErr) }, 500);
+      }
+      try {
+        await client.query(
+          'INSERT INTO photos (album_id, filename, stored_filename, image_data) VALUES ($1, $2, $3, $4)',
+          [albumId, name, uuidName, null]
+        );
+      } catch (dbErr) {
+        await client.query('ROLLBACK');
+        console.error('DB error:', dbErr);
+        return c.json({ error: 'DBへの保存に失敗しました', detail: String(dbErr) }, 500);
+      }
     }
 
     await client.query('COMMIT');
@@ -97,7 +151,7 @@ app.post('/api/albums/:custom_id/photos', async (c) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Failed to upload photos:', error);
-    return c.json({ error: 'Failed to upload photos' }, 500);
+    return c.json({ error: 'Failed to upload photos', detail: String(error) }, 500);
   } finally {
     client.release();
   }
@@ -109,14 +163,20 @@ app.get('/api/albums/:custom_id/photos', async (c) => {
     try {
         const { custom_id } = c.req.param();
         const result = await pool.query(
-            `SELECT p.id, p.filename as name, p.image_data as data, p.created_at
+            `SELECT p.id, p.filename as name, p.stored_filename, p.created_at
              FROM photos p
              JOIN albums a ON p.album_id = a.id
              WHERE a.custom_id = $1
              ORDER BY p.created_at DESC`,
             [custom_id]
         );
-        return c.json(result.rows);
+        // presigned URLを生成
+        const photos = await Promise.all(result.rows.map(async (row) => {
+          // 公開バケットなので直接URLを使用
+          const url = `http://localhost:9000/${MINIO_BUCKET}/${row.stored_filename}`;
+          return { id: row.id, name: row.name, url: url };
+        }));
+        return c.json(photos);
     } catch (error) {
         console.error('Failed to fetch photos:', error);
         return c.json({ error: 'Failed to fetch photos' }, 500);
@@ -144,9 +204,15 @@ app.delete('/api/photos/:id', async (c) => {
 app.get('/api/photos', async (c) => {
     try {
         const result = await pool.query(
-            `SELECT id, filename as name, image_data as data FROM photos WHERE album_id IS NULL ORDER BY created_at DESC`
+            `SELECT id, filename as name, stored_filename FROM photos WHERE album_id IS NULL ORDER BY created_at DESC`
         );
-        return c.json(result.rows);
+        // presigned URLを生成
+        const photos = await Promise.all(result.rows.map(async (row) => {
+          // 公開バケットなので直接URLを使用
+          const url = `http://localhost:9000/${MINIO_BUCKET}/${row.stored_filename}`;
+          return { id: row.id, name: row.name, url: url };
+        }));
+        return c.json(photos);
     } catch (error) {
         console.error('Failed to fetch all photos:', error);
         return c.json({ error: 'Failed to fetch photos' }, 500);
@@ -162,10 +228,26 @@ app.post('/api/photos', async (c) => {
 
         for (const photo of photos) {
             const { name, data } = photo;
-            await client.query(
-                'INSERT INTO photos (album_id, filename, image_data) VALUES ($1, $2, $3)',
-                [null, name, data] // album_id is null
-            );
+            const ext = name.split('.').pop();
+            const uuidName = `${uuidv4()}.${ext}`;
+            const buffer = Buffer.from(data, 'base64');
+            try {
+              await minio.putObject(MINIO_BUCKET, uuidName, buffer);
+            } catch (minioErr) {
+              await client.query('ROLLBACK');
+              console.error('MinIO error:', minioErr);
+              return c.json({ error: 'MinIOへの保存に失敗しました', detail: String(minioErr) }, 500);
+            }
+            try {
+              await client.query(
+                  'INSERT INTO photos (album_id, filename, stored_filename, image_data) VALUES ($1, $2, $3, $4)',
+                  [null, name, uuidName, null]
+              );
+            } catch (dbErr) {
+              await client.query('ROLLBACK');
+              console.error('DB error:', dbErr);
+              return c.json({ error: 'DBへの保存に失敗しました', detail: String(dbErr) }, 500);
+            }
         }
 
         await client.query('COMMIT');
@@ -173,7 +255,7 @@ app.post('/api/photos', async (c) => {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Failed to upload photos:', error);
-        return c.json({ error: 'Failed to upload photos' }, 500);
+        return c.json({ error: 'Failed to upload photos', detail: String(error) }, 500);
     } finally {
         client.release();
     }
