@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
-import { albumRouter } from './routes/albumRoutes.ts'
-import { photoRouter } from './routes/photoRoutes.ts'
+import { albumRouter } from './routes/albumRoutes'
+import { photoRouter } from './routes/photoRoutes'
 
 const app = new Hono()
 

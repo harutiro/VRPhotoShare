@@ -2,9 +2,9 @@ services:
   backend:
     build:
       context: ./backend
-      target: dev
+      target: prod
     ports:
-      - "3001:3000"
+      - "3000:3000"
     env_file:
       - ./.env
     networks:
@@ -12,23 +12,17 @@ services:
     depends_on:
       - db
       - minio
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
 
   frontend:
     build:
       context: ./frontend
-      target: dev
+      target: prod
     ports:
-      - 5173:5173  # 開発用Viteサーバー
+      - 80:80  # 本番はnginxで80番
     networks:
       - vr-photo-share-net
     depends_on:
       - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
 
   db:
     image: postgres:15-alpine
@@ -63,6 +57,4 @@ volumes:
 
 networks:
   vr-photo-share-net:
-    driver: bridge
-
-# 本番用は docker-compose.prod.yml を参照 
+    driver: bridge 

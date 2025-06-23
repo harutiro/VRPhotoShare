@@ -1,20 +1,23 @@
-# Use an official Node.js runtime as a parent image
-FROM node:20-alpine
-
-# Set the working directory in the container
+# --- dev stage ---
+FROM node:20-alpine AS dev
 WORKDIR /app
-
-# Copy package.json and package-lock.json to the working directory
 COPY package*.json ./
-
-# Install project dependencies
 RUN npm install
-
-# Copy the rest of the application's source code to the working directory
 COPY . .
-
-# Make port 5173 available to the world outside this container
 EXPOSE 5173
+CMD ["npm", "run", "dev"]
 
-# Run the app when the container launches
-CMD ["npm", "run", "dev"] 
+# --- build stage ---
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# --- prod stage ---
+FROM nginx:alpine AS prod
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"] 

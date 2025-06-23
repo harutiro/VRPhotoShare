@@ -46,6 +46,46 @@ make db-init
 
 ---
 
+## 🌏 本番デプロイ方法
+
+### サーバー（VPSやクラウド等）での本番起動
+
+1. 必要なファイルをサーバーに配置（git clone推奨）
+2. `.env` を編集し、本番用のDB/MINIO設定にする
+3. MinIO初期化（初回のみ）
+   ```sh
+   make minio-setup
+   ```
+4. 本番サービス起動
+   ```sh
+   make deploy
+   ```
+   - `docker-compose.prod.yml` を使って本番用Dockerイメージで全サービスが起動します
+   - フロントエンドはnginxで80番ポートで配信されます（http://<サーバーIP>/）
+   - サーバーのファイアウォールで 80, 3000, 9000, 9001 など必要なポートを開放してください
+
+5. サービス停止
+   ```sh
+   make deploy-stop
+   ```
+
+6. 完全削除（ボリューム含む）
+   ```sh
+   make deploy-clean
+   ```
+
+### 開発/本番の切り替えについて
+- 開発は `docker-compose.yml`、本番は `docker-compose.prod.yml` を使います
+- `make dev` … 開発用ホットリロード環境（Vite/ts-node等）
+- `make deploy` … 本番用ビルド＆nginx配信
+
+### 注意事項
+- 本番では.envのパスワード・キーを十分に強固なものにしてください
+- サーバーのセキュリティ設定（ファイアウォール、SSL等）は各自でご対応ください
+- docker-compose.ymlのポートや永続化設定も必要に応じて調整してください
+
+---
+
 ## 🗂️ ディレクトリ構成
 
 ```
@@ -63,7 +103,9 @@ VRPhotoShare/
 
 ## 🌐 アクセスURL
 
-- フロントエンド: [http://localhost:5173](http://localhost:5173)
+- フロントエンド: 
+  - 開発時: [http://localhost:5173](http://localhost:5173)
+  - **本番時: [http://<サーバーIP>/](http://<サーバーIP>/)（nginxで80番）**
 - バックエンドAPI: [http://localhost:3000](http://localhost:3000)
 - MinIO管理画面: [http://localhost:9001](http://localhost:9001)  
   （ユーザー/パスワードは .env 参照）

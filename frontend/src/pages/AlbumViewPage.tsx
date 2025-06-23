@@ -161,7 +161,7 @@ export const AlbumViewPage = () => {
   };
 
   // ワールド情報がない写真に近傍ワールド名を割り当て（dateベース）
-  const assignedPhotos = photos.map((photo, idx, arr) => {
+  const assignedPhotos = photos.map((photo, _idx, arr) => {
     let worldName = 'ワールド情報なし';
     let hasWorld = false;
     let photoDate: Date | null = null;
