@@ -14,6 +14,7 @@ interface Photo {
   id: number;
   name: string;
   data: string;
+  url: string;
 }
 
 interface Album {
@@ -170,7 +171,7 @@ export const AlbumViewPage = () => {
         {currentPhoto && (
           <Stack>
             <img
-              src={`data:image/jpeg;base64,${currentPhoto.data}`}
+              src={currentPhoto.url}
               alt={currentPhoto.name}
               style={{
                 maxWidth: '100%',
@@ -248,7 +249,7 @@ export const AlbumViewPage = () => {
                       </ActionIcon>
                       <Card.Section>
                           <Image
-                              src={`data:image/jpeg;base64,${photo.data}`}
+                              src={photo.url}
                               height={180}
                               alt={photo.name}
                               onClick={() => handlePhotoClick(photo)}

@@ -15,6 +15,7 @@ CREATE TABLE photos (
     id SERIAL PRIMARY KEY,
     album_id INT REFERENCES albums(id) ON DELETE CASCADE,
     filename TEXT NOT NULL,
-    image_data TEXT NOT NULL,
+    stored_filename TEXT NOT NULL,
+    image_data TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 ); 

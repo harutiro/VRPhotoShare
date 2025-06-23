@@ -216,3 +216,32 @@ services:
 また、アルバムをクリックしたら、詳細がポップアップとして表示され、写真の消去と、写真のダウンロードができる様になってください。
 
 また、写真のダウンロードは一番最初の格子状にみれている時に、一括で選択できる様になっていて、選択した画像を一括でzipにしてダウンロードできる様にもして欲しいです。
+
+---
+
+## 🛠 運用ノウハウ・トラブルシューティング
+
+### 1. MinIO・presigned URLの扱い
+- 画像ファイルはMinIO（S3互換）に保存し、DBにはファイル名のみを記録します。
+- 画像取得時はバックエンドでpresigned URL（署名付きURL）を発行し、フロントエンドはimgタグのsrc属性にそのままURLを指定してください（base64デコード等は不要）。
+- presigned URLのホスト部分は、バックエンドからMinIOへは `minio`（dockerネットワーク名）で接続し、外部公開用には `localhost` などに置換する必要があります。  
+  例: `http://minio:9000/...` → `http://localhost:9000/...`
+- presigned URLで403 Forbiddenが出る場合は、バケットの匿名ダウンロード権限・時刻ズレ・バケット名の大文字小文字を確認してください。
+
+### 2. .env・docker compose・MinIO初期化
+- `.env`ファイルがないとDBやMinIOの接続情報が渡らず、500エラー等が発生します。必ず作成してください。
+- MinIOバケットが消えている場合は `make minio-setup` で自動作成できます。
+- MinIOのエンドポイントは、バックエンドからは `minio`、外部公開用URLには `localhost` などを使い分けてください。
+
+### 3. よくあるエラーと対策
+- `minio`パッケージ未インストール → `npm install minio` & `docker compose build`
+- presigned URLが `minio` のまま外部公開されている → バックエンドで `localhost` などに置換
+- 画像が表示されない・403 → バケット権限、時刻、URL置換、バケット名を確認
+
+### 4. Makefile活用
+- `make minio-setup` でバケット作成・初期化が自動化されています。
+- docker compose up/downやbackend再起動もMakefile経由で実行できます。
+
+### 5. その他
+- フロントエンドでpresigned URLはimgタグのsrcにそのまま指定してください。
+- APIエラーの多くはバックエンドやMinIOの設定不備が主因です。エラーメッセージを確認し、上記のポイントを見直してください。
