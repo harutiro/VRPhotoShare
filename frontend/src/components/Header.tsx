@@ -18,7 +18,6 @@ export const Header = ({ opened, toggle }: HeaderProps) => {
         </Title>
         <Group ml="xl" gap={20} visibleFrom="sm">
             <Button component={Link} to="/create-album" variant="default">Create Album</Button>
-            <Button component={Link} to="/upload">Upload Photos</Button>
         </Group>
       </Group>
     </Group>
