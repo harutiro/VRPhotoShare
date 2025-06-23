@@ -293,7 +293,18 @@ export const AlbumViewPage = () => {
         )}
       </Modal>
 
-      <Modal opened={editModalOpened} onClose={() => setEditModalOpened(false)} title="アルバム名を編集" centered>
+      <Modal opened={editModalOpened} onClose={() => setEditModalOpened(false)} title="アルバム名を編集" centered
+        styles={{
+          inner: {
+            position: 'fixed',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            minWidth: 300,
+            zIndex: 201,
+          },
+        }}
+      >
         <TextInput
           value={editName}
           onChange={(e) => setEditName(e.currentTarget.value)}
