@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container, Title, Grid, Card, Image, Text, Center, Button, Group, ActionIcon,
-  Checkbox, Modal, Stack, Box, LoadingOverlay,
+  Checkbox, Modal, Stack, Box, LoadingOverlay, Tooltip,
 } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { useDisclosure, useClipboard } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconDownload, IconTrash } from '@tabler/icons-react';
+import { IconDownload, IconTrash, IconShare } from '@tabler/icons-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
@@ -36,6 +36,7 @@ export const AlbumViewPage = () => {
   const [isZipping, setIsZipping] = useState(false);
 
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
+  const clipboard = useClipboard({ timeout: 500 });
 
   useEffect(() => {
     const fetchAlbumDetails = async () => {
@@ -203,6 +204,22 @@ export const AlbumViewPage = () => {
                   Download ({selectedPhotos.length})
               </Button>
               <Button onClick={() => navigate(`/album/${custom_id}/upload`)}>Upload Photos</Button>
+              <Tooltip label="Copy album link to clipboard">
+                <ActionIcon 
+                  variant="default" 
+                  size="lg" 
+                  onClick={() => {
+                    clipboard.copy(window.location.href);
+                    notifications.show({
+                      title: 'Link Copied!',
+                      message: 'The album link has been copied to your clipboard.',
+                      color: 'green',
+                    });
+                  }}
+                >
+                  <IconShare size={16} />
+                </ActionIcon>
+              </Tooltip>
           </Group>
         </Group>
 

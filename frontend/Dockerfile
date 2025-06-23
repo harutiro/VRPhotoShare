@@ -1,14 +1,20 @@
-# Build stage
-FROM node:18-alpine AS build
-WORKDIR /app
-COPY package.json ./
-RUN npm install
-COPY . .
-RUN npm run build
+# Use an official Node.js runtime as a parent image
+FROM node:20-alpine
 
-# Production stage
-FROM nginx:1.23-alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"] 
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy package.json and package-lock.json to the working directory
+COPY package*.json ./
+
+# Install project dependencies
+RUN npm install
+
+# Copy the rest of the application's source code to the working directory
+COPY . .
+
+# Make port 5173 available to the world outside this container
+EXPOSE 5173
+
+# Run the app when the container launches
+CMD ["npm", "run", "dev"] 
