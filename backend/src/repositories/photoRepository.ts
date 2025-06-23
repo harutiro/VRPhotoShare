@@ -8,7 +8,7 @@ export const getAllPhotos = async (sort: string) => {
     `SELECT id, filename as name, stored_filename, image_data FROM photos WHERE album_id IS NULL ORDER BY created_at ${sort.toUpperCase()}`
   );
   return result.rows.map(row => {
-    const url = `http://localhost:9000/${MINIO_BUCKET}/${row.stored_filename}`;
+    const url = `/minio-api/${MINIO_BUCKET}/${row.stored_filename}`;
     let fileDate = null;
     if (row.image_data) {
       try {
@@ -30,7 +30,7 @@ export const getPhotosByAlbumCustomId = async (custom_id: string, sort: string) 
     [custom_id]
   );
   return result.rows.map(row => {
-    const url = `http://localhost:9000/${MINIO_BUCKET}/${row.stored_filename}`;
+    const url = `/minio-api/${MINIO_BUCKET}/${row.stored_filename}`;
     let fileDate = null;
     if (row.image_data) {
       try {
