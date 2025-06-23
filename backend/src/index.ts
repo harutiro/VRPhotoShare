@@ -396,6 +396,34 @@ app.post('/api/photos', async (c) => {
     }
 });
 
+// アルバム削除API
+app.delete('/api/albums/:custom_id', async (c) => {
+  const { custom_id } = c.req.param();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // アルバムID取得
+    const albumResult = await client.query('SELECT id FROM albums WHERE custom_id = $1', [custom_id]);
+    if (albumResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return c.json({ error: 'Album not found' }, 404);
+    }
+    const albumId = albumResult.rows[0].id;
+    // 写真削除
+    await client.query('DELETE FROM photos WHERE album_id = $1', [albumId]);
+    // アルバム削除
+    await client.query('DELETE FROM albums WHERE id = $1', [albumId]);
+    await client.query('COMMIT');
+    return c.json({ message: 'Album deleted successfully' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Failed to delete album:', error);
+    return c.json({ error: 'Failed to delete album' }, 500);
+  } finally {
+    client.release();
+  }
+});
+
 const port = 3000;
 console.log(`Server is running on port ${port}`);
 

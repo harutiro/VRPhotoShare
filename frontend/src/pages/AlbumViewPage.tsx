@@ -235,6 +235,19 @@ export const AlbumViewPage = () => {
     }
   };
 
+  const handleDeleteAlbum = async () => {
+    if (!album) return;
+    if (!window.confirm('本当にこのアルバムを削除しますか？この操作は元に戻せません。')) return;
+    try {
+      const res = await fetch(`/api/albums/${album.custom_id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      notifications.show({ title: '削除完了', message: 'アルバムを削除しました', color: 'green' });
+      navigate('/');
+    } catch {
+      notifications.show({ title: 'エラー', message: 'アルバムの削除に失敗しました', color: 'red' });
+    }
+  };
+
   if (loading) {
     return <Container my="md">{/* Skeleton loader */}</Container>;
   }
@@ -311,6 +324,9 @@ export const AlbumViewPage = () => {
               onChange={(e) => handleSelectAllChange(e.currentTarget.checked)}
               disabled={photos.length === 0}
             />
+            <Button color="red" variant="outline" size="xs" onClick={handleDeleteAlbum} mt="xs">
+              アルバムを削除
+            </Button>
           </Stack>
           <Group>
               <Button
