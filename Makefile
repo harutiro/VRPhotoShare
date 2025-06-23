@@ -62,6 +62,7 @@ db-init:
 
 # 本番デプロイ用（docker composeでバックグラウンド起動）
 deploy:
+	docker compose -f docker-compose.prod.yml build --no-cache 
 	docker compose -f docker-compose.prod.yml up -d
 
 # 本番サービス停止
