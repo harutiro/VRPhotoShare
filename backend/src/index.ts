@@ -106,6 +106,28 @@ app.get('/api/albums/:custom_id', async (c) => {
     }
 });
 
+// アルバム名変更API
+app.put('/api/albums/:custom_id', async (c) => {
+  try {
+    const { custom_id } = c.req.param();
+    const { name } = await c.req.json<{ name: string }>();
+    if (!name) {
+      return c.json({ error: 'Album name is required' }, 400);
+    }
+    const result = await pool.query(
+      'UPDATE albums SET name = $1 WHERE custom_id = $2 RETURNING *',
+      [name, custom_id]
+    );
+    if (result.rows.length === 0) {
+      return c.json({ error: 'Album not found' }, 404);
+    }
+    return c.json(result.rows[0]);
+  } catch (error) {
+    console.error('Failed to update album name:', error);
+    return c.json({ error: 'Failed to update album name' }, 500);
+  }
+});
+
 // PNGバイナリからPngPackageチャンク(JSON)またはiTXtチャンク(Description)を抽出する関数
 function extractPngPackage(buffer: Buffer): string | null {
   // PNGファイルのシグネチャは8バイト

@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container, Title, Grid, Card, Image, Text, Center, Button, Group, ActionIcon,
-  Checkbox, Modal, Stack, Box, LoadingOverlay, Tooltip,
+  Checkbox, Modal, Stack, Box, LoadingOverlay, Tooltip, TextInput,
 } from '@mantine/core';
 import { useDisclosure, useClipboard } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconDownload, IconTrash, IconShare, IconSortAscending, IconSortDescending } from '@tabler/icons-react';
+import { IconDownload, IconTrash, IconShare, IconArrowsSort } from '@tabler/icons-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
@@ -40,6 +40,9 @@ export const AlbumViewPage = () => {
 
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
   const clipboard = useClipboard({ timeout: 500 });
+
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState('');
 
   useEffect(() => {
     const fetchAlbumDetails = async () => {
@@ -207,6 +210,31 @@ export const AlbumViewPage = () => {
     worldGroups[worldName].push(photo);
   });
 
+  // アルバム名編集開始
+  const startEditName = () => {
+    setEditName(album?.name || '');
+    setIsEditingName(true);
+  };
+  // アルバム名保存
+  const saveEditName = async () => {
+    if (!editName.trim() || !album) return;
+    try {
+      const res = await fetch(`/api/albums/${album.custom_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName.trim() })
+      });
+      if (!res.ok) throw new Error('アルバム名の更新に失敗しました');
+      const updated = await res.json();
+      setAlbum((prev) => prev ? { ...prev, name: updated.name } : prev);
+      setIsEditingName(false);
+      notifications.show({ title: '成功', message: 'アルバム名を変更しました', color: 'green' });
+    } catch (e) {
+      void e;
+      notifications.show({ title: 'エラー', message: 'アルバム名の変更に失敗しました', color: 'red' });
+    }
+  };
+
   if (loading) {
     return <Container my="md">{/* Skeleton loader */}</Container>;
   }
@@ -257,29 +285,41 @@ export const AlbumViewPage = () => {
 
         <Group justify="space-between" mb="lg">
           <Stack gap="xs">
-              <Title order={2}>{album?.name}</Title>
-              <Text c="dimmed">{photos.length} photos</Text>
-              <Checkbox
-                label="すべて選択"
-                checked={allSelected}
-                indeterminate={isIndeterminate}
-                onChange={(e) => handleSelectAllChange(e.currentTarget.checked)}
-                disabled={photos.length === 0}
-              />
+            {/* アルバム名編集UI */}
+            {isEditingName ? (
+              <Group>
+                <TextInput
+                  value={editName}
+                  onChange={(e) => setEditName(e.currentTarget.value)}
+                  size="md"
+                  style={{ minWidth: 200 }}
+                />
+                <Button size="xs" color="green" onClick={saveEditName}>保存</Button>
+                <Button size="xs" variant="default" onClick={() => setIsEditingName(false)}>キャンセル</Button>
+              </Group>
+            ) : (
+              <Group>
+                <Title order={2}>{album?.name}</Title>
+                <Button size="xs" variant="default" onClick={startEditName}>編集</Button>
+              </Group>
+            )}
+            <Text c="dimmed">{photos.length} photos</Text>
+            <Checkbox
+              label="すべて選択"
+              checked={allSelected}
+              indeterminate={isIndeterminate}
+              onChange={(e) => handleSelectAllChange(e.currentTarget.checked)}
+              disabled={photos.length === 0}
+            />
           </Stack>
           <Group>
               <Button
-                variant={sortOrder === 'desc' ? 'filled' : 'outline'}
-                leftSection={<IconSortDescending size={16} />}
-                onClick={() => setSortOrder('desc')}
-                disabled={sortOrder === 'desc'}
-              >新しい順</Button>
-              <Button
-                variant={sortOrder === 'asc' ? 'filled' : 'outline'}
-                leftSection={<IconSortAscending size={16} />}
-                onClick={() => setSortOrder('asc')}
-                disabled={sortOrder === 'asc'}
-              >古い順</Button>
+                variant="outline"
+                leftSection={<IconArrowsSort size={16} />}
+                onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+              >
+                {sortOrder === 'desc' ? '新しい順' : '古い順'}
+              </Button>
               <Button
                   onClick={handleBulkDownload}
                   disabled={selectedPhotos.length === 0 || isZipping}
