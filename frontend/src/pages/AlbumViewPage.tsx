@@ -150,9 +150,22 @@ export const AlbumViewPage = () => {
   }
 
   return (
-    <Container my="md" pos="relative">
-      <LoadingOverlay visible={isZipping} overlayProps={{ radius: "sm", blur: 2 }} />
-      <Modal opened={modalOpened} onClose={closeModal} title={currentPhoto?.name} centered size="xl">
+    <>
+      <Modal 
+        opened={modalOpened} 
+        onClose={closeModal} 
+        title={currentPhoto?.name} 
+        size="xl" 
+        zIndex={200}
+        styles={{
+          inner: {
+            position: 'fixed',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            top: '5%',
+          },
+        }}
+      >
         {currentPhoto && (
           <Stack>
             <img
@@ -173,61 +186,65 @@ export const AlbumViewPage = () => {
         )}
       </Modal>
 
-      <Group justify="space-between" mb="lg">
-        <Stack gap="xs">
-            <Title order={2}>{album?.name}</Title>
-            <Text c="dimmed">{photos.length} photos</Text>
-        </Stack>
-        <Group>
-            <Button
-                onClick={handleBulkDownload}
-                disabled={selectedPhotos.length === 0 || isZipping}
-                leftSection={<IconDownload size={14} />}
-            >
-                Download ({selectedPhotos.length})
-            </Button>
-            <Button onClick={() => navigate(`/album/${custom_id}/upload`)}>Upload Photos</Button>
-        </Group>
-      </Group>
+      <Container my="md" pos="relative">
+        <LoadingOverlay visible={isZipping} overlayProps={{ radius: "sm", blur: 2 }} />
 
-      {photos.length === 0 && !loading ? (
-        <Center><Text>This album is empty. Upload some photos!</Text></Center>
-      ) : (
-        <Grid>
-          {photos.map((photo) => (
-            <Grid.Col key={photo.id} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
-              <Card shadow="sm" padding={0} radius="md" withBorder>
-                <Box pos="relative">
-                    <Checkbox
-                        pos="absolute" top={10} left={10}
-                        style={{ zIndex: 1 }}
-                        checked={selectedPhotos.includes(photo.id)}
-                        onChange={(e) => handleSelectionChange(photo.id, e.currentTarget.checked)}
-                        aria-label="Select photo"
-                    />
-                     <ActionIcon variant="filled" color="red" radius="xl" size="sm"
-                        pos="absolute" top={10} right={10}
-                        style={{ zIndex: 1 }}
-                        onClick={(e) => { e.stopPropagation(); handleDelete(photo.id); }}
-                        title="Delete Photo"
-                    >
-                        <IconTrash size={14} />
-                    </ActionIcon>
-                    <Card.Section>
-                        <Image
-                            src={`data:image/jpeg;base64,${photo.data}`}
-                            height={180}
-                            alt={photo.name}
-                            onClick={() => handlePhotoClick(photo)}
-                            style={{ cursor: 'pointer' }}
-                        />
-                    </Card.Section>
-                </Box>
-              </Card>
-            </Grid.Col>
-          ))}
-        </Grid>
-      )}
-    </Container>
+        <Group justify="space-between" mb="lg">
+          <Stack gap="xs">
+              <Title order={2}>{album?.name}</Title>
+              <Text c="dimmed">{photos.length} photos</Text>
+          </Stack>
+          <Group>
+              <Button
+                  onClick={handleBulkDownload}
+                  disabled={selectedPhotos.length === 0 || isZipping}
+                  leftSection={<IconDownload size={14} />}
+              >
+                  Download ({selectedPhotos.length})
+              </Button>
+              <Button onClick={() => navigate(`/album/${custom_id}/upload`)}>Upload Photos</Button>
+          </Group>
+        </Group>
+
+        {photos.length === 0 && !loading ? (
+          <Center><Text>This album is empty. Upload some photos!</Text></Center>
+        ) : (
+          <Grid>
+            {photos.map((photo) => (
+              <Grid.Col key={photo.id} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
+                <Card shadow="sm" padding={0} radius="md" withBorder>
+                  <Box pos="relative">
+                      <Checkbox
+                          pos="absolute" top={10} left={10}
+                          style={{ zIndex: 1 }}
+                          checked={selectedPhotos.includes(photo.id)}
+                          onChange={(e) => handleSelectionChange(photo.id, e.currentTarget.checked)}
+                          aria-label="Select photo"
+                      />
+                       <ActionIcon variant="filled" color="red" radius="xl" size="sm"
+                          pos="absolute" top={10} right={10}
+                          style={{ zIndex: 1 }}
+                          onClick={(e) => { e.stopPropagation(); handleDelete(photo.id); }}
+                          title="Delete Photo"
+                      >
+                          <IconTrash size={14} />
+                      </ActionIcon>
+                      <Card.Section>
+                          <Image
+                              src={`data:image/jpeg;base64,${photo.data}`}
+                              height={180}
+                              alt={photo.name}
+                              onClick={() => handlePhotoClick(photo)}
+                              style={{ cursor: 'pointer' }}
+                          />
+                      </Card.Section>
+                  </Box>
+                </Card>
+              </Grid.Col>
+            ))}
+          </Grid>
+        )}
+      </Container>
+    </>
   );
 };
