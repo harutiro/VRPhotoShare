@@ -106,6 +106,59 @@ app.get('/api/albums/:custom_id', async (c) => {
     }
 });
 
+// PNGバイナリからPngPackageチャンク(JSON)またはiTXtチャンク(Description)を抽出する関数
+function extractPngPackage(buffer: Buffer): string | null {
+  // PNGファイルのシグネチャは8バイト
+  if (buffer.readUInt32BE(0) !== 0x89504e47 || buffer.readUInt32BE(4) !== 0x0d0a1a0a) {
+    return null;
+  }
+  let offset = 8;
+  while (offset < buffer.length) {
+    if (offset + 8 > buffer.length) break;
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.toString('ascii', offset + 4, offset + 8);
+    if (type === 'PngP') { // 'PngPackage'の先頭4文字
+      const dataStart = offset + 8;
+      const dataEnd = dataStart + length;
+      if (dataEnd > buffer.length) break;
+      const chunkData = buffer.slice(dataStart, dataEnd).toString('utf8');
+      return chunkData;
+    }
+    // iTXtチャンク対応
+    if (type === 'iTXt') {
+      const dataStart = offset + 8;
+      const dataEnd = dataStart + length;
+      if (dataEnd > buffer.length) break;
+      const chunkData = buffer.slice(dataStart, dataEnd);
+      // iTXtチャンクの構造: keyword\0 compression_flag\0 compression_method\0 lang_tag\0 translated_keyword\0 text
+      // keywordはnull終端文字まで
+      const nullIdx = chunkData.indexOf(0x00);
+      if (nullIdx !== -1) {
+        const keyword = chunkData.slice(0, nullIdx).toString('utf8');
+        if (keyword === 'Description') {
+          // Descriptionキーワードのテキスト部分を抽出
+          // nullIdx+1: compression_flag, +2: compression_method, +3: lang_tag(null終端), ...
+          let ptr = nullIdx + 1; // compression_flag
+          ptr += 1; // compression_method
+          // lang_tag (null終端文字まで)
+          while (ptr < chunkData.length && chunkData[ptr] !== 0x00) ptr++;
+          ptr++; // null終端
+          // translated_keyword (null終端文字まで)
+          while (ptr < chunkData.length && chunkData[ptr] !== 0x00) ptr++;
+          ptr++; // null終端
+          // ここからtext
+          if (ptr < chunkData.length) {
+            const text = chunkData.slice(ptr).toString('utf8');
+            // ヌルバイトを除去して返す
+            return text.replace(/\u0000/g, '');
+          }
+        }
+      }
+    }
+    offset += 8 + length + 4; // length + type + data + CRC
+  }
+  return null;
+}
 
 // 3. Upload photos to an album
 app.post('/api/albums/:custom_id/photos', async (c) => {
@@ -127,6 +180,26 @@ app.post('/api/albums/:custom_id/photos', async (c) => {
       const ext = name.split('.').pop();
       const uuidName = `${uuidv4()}.${ext}`;
       const buffer = Buffer.from(data, 'base64');
+      // PNGメタデータ抽出
+      let imageMeta: string | null = null;
+      if (ext && ext.toLowerCase() === 'png') {
+        // デバッグ: 全チャンク名を列挙
+        let offset = 8;
+        const chunkNames: string[] = [];
+        while (offset + 8 <= buffer.length) {
+          const length = buffer.readUInt32BE(offset);
+          const type = buffer.toString('ascii', offset + 4, offset + 8);
+          chunkNames.push(type);
+          offset += 8 + length + 4;
+        }
+        console.log('PNGチャンク一覧:', chunkNames);
+        imageMeta = extractPngPackage(buffer);
+        if (imageMeta) {
+          console.log('PngPackage抽出:', imageMeta);
+        } else {
+          console.log('PngPackageなし');
+        }
+      }
       try {
         await minio.putObject(MINIO_BUCKET, uuidName, buffer);
       } catch (minioErr) {
@@ -137,7 +210,7 @@ app.post('/api/albums/:custom_id/photos', async (c) => {
       try {
         await client.query(
           'INSERT INTO photos (album_id, filename, stored_filename, image_data) VALUES ($1, $2, $3, $4)',
-          [albumId, name, uuidName, null]
+          [albumId, name, uuidName, imageMeta]
         );
       } catch (dbErr) {
         await client.query('ROLLBACK');
@@ -163,7 +236,7 @@ app.get('/api/albums/:custom_id/photos', async (c) => {
     try {
         const { custom_id } = c.req.param();
         const result = await pool.query(
-            `SELECT p.id, p.filename as name, p.stored_filename, p.created_at
+            `SELECT p.id, p.filename as name, p.stored_filename, p.image_data, p.created_at
              FROM photos p
              JOIN albums a ON p.album_id = a.id
              WHERE a.custom_id = $1
@@ -174,7 +247,7 @@ app.get('/api/albums/:custom_id/photos', async (c) => {
         const photos = await Promise.all(result.rows.map(async (row) => {
           // 公開バケットなので直接URLを使用
           const url = `http://localhost:9000/${MINIO_BUCKET}/${row.stored_filename}`;
-          return { id: row.id, name: row.name, url: url };
+          return { id: row.id, name: row.name, url: url, image_data: row.image_data };
         }));
         return c.json(photos);
     } catch (error) {
@@ -231,6 +304,26 @@ app.post('/api/photos', async (c) => {
             const ext = name.split('.').pop();
             const uuidName = `${uuidv4()}.${ext}`;
             const buffer = Buffer.from(data, 'base64');
+            // PNGメタデータ抽出
+            let imageMeta: string | null = null;
+            if (ext && ext.toLowerCase() === 'png') {
+              // デバッグ: 全チャンク名を列挙
+              let offset = 8;
+              const chunkNames: string[] = [];
+              while (offset + 8 <= buffer.length) {
+                const length = buffer.readUInt32BE(offset);
+                const type = buffer.toString('ascii', offset + 4, offset + 8);
+                chunkNames.push(type);
+                offset += 8 + length + 4;
+              }
+              console.log('PNGチャンク一覧:', chunkNames);
+              imageMeta = extractPngPackage(buffer);
+              if (imageMeta) {
+                console.log('PngPackage抽出:', imageMeta);
+              } else {
+                console.log('PngPackageなし');
+              }
+            }
             try {
               await minio.putObject(MINIO_BUCKET, uuidName, buffer);
             } catch (minioErr) {
@@ -241,7 +334,7 @@ app.post('/api/photos', async (c) => {
             try {
               await client.query(
                   'INSERT INTO photos (album_id, filename, stored_filename, image_data) VALUES ($1, $2, $3, $4)',
-                  [null, name, uuidName, null]
+                  [null, name, uuidName, imageMeta]
               );
             } catch (dbErr) {
               await client.query('ROLLBACK');
