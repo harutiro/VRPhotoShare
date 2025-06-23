@@ -39,8 +39,9 @@ open-minio-console:
 	open http://localhost:9001
 
 # 1. 初回セットアップ（MinIO初期化＋docker起動）
-setup: minio-setup
+setup: 
 	docker compose up -d
+	make minio-setup
 
 # 2. 開発用サーバー起動（既に初期化済みならこれだけでOK）
 dev:
