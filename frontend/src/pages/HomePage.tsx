@@ -2,14 +2,33 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Title, Paper, Group, TextInput, Button, Text, Stack, Card, Grid } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 
 export const HomePage = () => {
   const navigate = useNavigate();
   const [albumId, setAlbumId] = useState('');
 
-  const handleViewAlbum = () => {
-    if (albumId.trim()) {
+  const handleViewAlbum = async () => {
+    if (!albumId.trim()) return;
+    // 事前に存在確認
+    try {
+      const res = await fetch(`/api/albums/${albumId.trim()}`);
+      if (res.status === 404) {
+        notifications.show({
+          title: 'エラー',
+          message: '指定されたアルバムIDのアルバムは存在しません。',
+          color: 'red',
+        });
+        return;
+      }
+      if (!res.ok) throw new Error();
       navigate(`/album/${albumId.trim()}`);
+    } catch {
+      notifications.show({
+        title: 'エラー',
+        message: 'アルバムの検索中にエラーが発生しました。',
+        color: 'red',
+      });
     }
   };
 
