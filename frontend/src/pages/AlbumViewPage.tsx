@@ -6,7 +6,7 @@ import {
 } from '@mantine/core';
 import { useDisclosure, useClipboard } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconDownload, IconTrash, IconShare } from '@tabler/icons-react';
+import { IconDownload, IconTrash, IconShare, IconSortAscending, IconSortDescending } from '@tabler/icons-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
@@ -36,6 +36,7 @@ export const AlbumViewPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isZipping, setIsZipping] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
   const clipboard = useClipboard({ timeout: 500 });
@@ -56,7 +57,7 @@ export const AlbumViewPage = () => {
         const albumData = await albumResponse.json();
         setAlbum(albumData);
 
-        const photosResponse = await fetch(`/api/albums/${custom_id}/photos`);
+        const photosResponse = await fetch(`/api/albums/${custom_id}/photos?sort=${sortOrder}`);
         if (!photosResponse.ok) {
             throw new Error('Failed to fetch photos for the album.');
         }
@@ -77,7 +78,7 @@ export const AlbumViewPage = () => {
     if (custom_id) {
         fetchAlbumDetails();
     }
-  }, [custom_id]);
+  }, [custom_id, sortOrder]);
   
   const handlePhotoClick = (photo: Photo) => {
     setCurrentPhoto(photo);
@@ -234,6 +235,18 @@ export const AlbumViewPage = () => {
               />
           </Stack>
           <Group>
+              <Button
+                variant={sortOrder === 'desc' ? 'filled' : 'outline'}
+                leftSection={<IconSortDescending size={16} />}
+                onClick={() => setSortOrder('desc')}
+                disabled={sortOrder === 'desc'}
+              >新しい順</Button>
+              <Button
+                variant={sortOrder === 'asc' ? 'filled' : 'outline'}
+                leftSection={<IconSortAscending size={16} />}
+                onClick={() => setSortOrder('asc')}
+                disabled={sortOrder === 'asc'}
+              >古い順</Button>
               <Button
                   onClick={handleBulkDownload}
                   disabled={selectedPhotos.length === 0 || isZipping}

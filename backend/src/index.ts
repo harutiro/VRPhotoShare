@@ -235,12 +235,14 @@ app.post('/api/albums/:custom_id/photos', async (c) => {
 app.get('/api/albums/:custom_id/photos', async (c) => {
     try {
         const { custom_id } = c.req.param();
+        // クエリパラメータでソート順を指定（asc/desc）
+        const sort = (c.req.query('sort') || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
         const result = await pool.query(
             `SELECT p.id, p.filename as name, p.stored_filename, p.image_data, p.created_at
              FROM photos p
              JOIN albums a ON p.album_id = a.id
              WHERE a.custom_id = $1
-             ORDER BY p.created_at DESC`,
+             ORDER BY p.created_at ${sort}`,
             [custom_id]
         );
         // presigned URLを生成
@@ -276,8 +278,10 @@ app.delete('/api/photos/:id', async (c) => {
 // 6. Get all photos (for homepage)
 app.get('/api/photos', async (c) => {
     try {
+        // クエリパラメータでソート順を指定（asc/desc）
+        const sort = (c.req.query('sort') || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
         const result = await pool.query(
-            `SELECT id, filename as name, stored_filename FROM photos WHERE album_id IS NULL ORDER BY created_at DESC`
+            `SELECT id, filename as name, stored_filename FROM photos WHERE album_id IS NULL ORDER BY created_at ${sort}`
         );
         // presigned URLを生成
         const photos = await Promise.all(result.rows.map(async (row) => {
