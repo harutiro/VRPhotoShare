@@ -4,7 +4,7 @@ MINIO_BUCKET ?= vrphotoshare
 
 ENV_FILE = .env
 
-.PHONY: gen-minio-keys create-minio-bucket set-minio-public minio-setup
+.PHONY: gen-minio-keys create-minio-bucket set-minio-public minio-setup dev setup stop clean db-init
 
 gen-minio-keys:
 	@echo "MINIO_ROOT_USER=$(MINIO_ROOT_USER)" >> $(ENV_FILE)
@@ -37,3 +37,24 @@ minio-setup: gen-minio-keys create-minio-bucket set-minio-public
 
 open-minio-console:
 	open http://localhost:9001
+
+# 1. 初回セットアップ（MinIO初期化＋docker起動）
+setup: minio-setup
+	docker-compose up -d
+
+# 2. 開発用サーバー起動（既に初期化済みならこれだけでOK）
+dev:
+	docker-compose up
+	open http://localhost:5173
+
+# 3. サービス停止
+stop:
+	docker-compose down
+
+# 4. ボリュームも含めて完全クリーン
+clean:
+	docker-compose down -v
+
+# 5. DB初期化（init.sqlを流し直したい場合など）
+db-init:
+	docker-compose exec db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/init.sql
