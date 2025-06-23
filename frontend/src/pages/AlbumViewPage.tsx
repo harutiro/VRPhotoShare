@@ -6,7 +6,7 @@ import {
 } from '@mantine/core';
 import { useDisclosure, useClipboard } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconDownload, IconTrash, IconShare, IconArrowsSort } from '@tabler/icons-react';
+import { IconDownload, IconTrash, IconShare, IconArrowsSort, IconEdit, IconUpload } from '@tabler/icons-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
@@ -41,8 +41,9 @@ export const AlbumViewPage = () => {
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
   const clipboard = useClipboard({ timeout: 500 });
 
-  const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState('');
+
+  const [editModalOpened, setEditModalOpened] = useState(false);
 
   useEffect(() => {
     const fetchAlbumDetails = async () => {
@@ -213,9 +214,8 @@ export const AlbumViewPage = () => {
   // アルバム名編集開始
   const startEditName = () => {
     setEditName(album?.name || '');
-    setIsEditingName(true);
+    setEditModalOpened(true);
   };
-  // アルバム名保存
   const saveEditName = async () => {
     if (!editName.trim() || !album) return;
     try {
@@ -227,7 +227,7 @@ export const AlbumViewPage = () => {
       if (!res.ok) throw new Error('アルバム名の更新に失敗しました');
       const updated = await res.json();
       setAlbum((prev) => prev ? { ...prev, name: updated.name } : prev);
-      setIsEditingName(false);
+      setEditModalOpened(false);
       notifications.show({ title: '成功', message: 'アルバム名を変更しました', color: 'green' });
     } catch (e) {
       void e;
@@ -293,29 +293,33 @@ export const AlbumViewPage = () => {
         )}
       </Modal>
 
+      <Modal opened={editModalOpened} onClose={() => setEditModalOpened(false)} title="アルバム名を編集" centered>
+        <TextInput
+          value={editName}
+          onChange={(e) => setEditName(e.currentTarget.value)}
+          size="md"
+          style={{ minWidth: 200 }}
+          mb="md"
+        />
+        <Group justify="flex-end">
+          <Button color="green" onClick={saveEditName}>保存</Button>
+          <Button variant="default" onClick={() => setEditModalOpened(false)}>キャンセル</Button>
+        </Group>
+      </Modal>
+
       <Container my="md" pos="relative">
         <LoadingOverlay visible={isZipping} overlayProps={{ radius: "sm", blur: 2 }} />
 
-        <Group justify="space-between" mb="lg">
+        <Group justify="space-between" mb="lg" align="center">
           <Stack gap="xs">
-            {/* アルバム名編集UI */}
-            {isEditingName ? (
-              <Group>
-                <TextInput
-                  value={editName}
-                  onChange={(e) => setEditName(e.currentTarget.value)}
-                  size="md"
-                  style={{ minWidth: 200 }}
-                />
-                <Button size="xs" color="green" onClick={saveEditName}>保存</Button>
-                <Button size="xs" variant="default" onClick={() => setIsEditingName(false)}>キャンセル</Button>
-              </Group>
-            ) : (
-              <Group>
-                <Title order={2}>{album?.name}</Title>
-                <Button size="xs" variant="default" onClick={startEditName}>編集</Button>
-              </Group>
-            )}
+            <Group align="center" gap="xs">
+              <Title order={2} style={{ marginRight: 8 }}>{album?.name}</Title>
+              <Tooltip label="アルバム名を編集">
+                <ActionIcon variant="light" color="blue" onClick={startEditName} size="lg">
+                  <IconEdit size={20} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
             <Text c="dimmed">{photos.length} photos</Text>
             <Checkbox
               label="すべて選択"
@@ -324,42 +328,66 @@ export const AlbumViewPage = () => {
               onChange={(e) => handleSelectAllChange(e.currentTarget.checked)}
               disabled={photos.length === 0}
             />
-            <Button color="red" variant="outline" size="xs" onClick={handleDeleteAlbum} mt="xs">
-              アルバムを削除
-            </Button>
           </Stack>
-          <Group>
-              <Button
-                variant="outline"
-                leftSection={<IconArrowsSort size={16} />}
+          <Group gap="xs">
+            <Tooltip label={sortOrder === 'desc' ? '新しい順' : '古い順'}>
+              <ActionIcon
+                variant="filled"
+                color="gray"
                 onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                size="lg"
               >
-                {sortOrder === 'desc' ? '新しい順' : '古い順'}
-              </Button>
-              <Button
-                  onClick={handleBulkDownload}
-                  disabled={selectedPhotos.length === 0 || isZipping}
-                  leftSection={<IconDownload size={14} />}
+                <IconArrowsSort size={20} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="写真をアップロード">
+              <ActionIcon
+                variant="filled"
+                color="blue"
+                onClick={() => navigate(`/album/${custom_id}/upload`)}
+                size="lg"
               >
-                  ダウンロード ({selectedPhotos.length})
-              </Button>
-              <Button onClick={() => navigate(`/album/${custom_id}/upload`)}>写真をアップロード</Button>
-              <Tooltip label="アルバムリンクをクリップボードにコピー">
-                <ActionIcon 
-                  variant="default" 
-                  size="lg" 
-                  onClick={() => {
-                    clipboard.copy(window.location.href);
-                    notifications.show({
-                      title: 'リンクをコピーしました',
-                      message: 'アルバムリンクをクリップボードにコピーしました。',
-                      color: 'green',
-                    });
-                  }}
-                >
-                  <IconShare size={16} />
-                </ActionIcon>
-              </Tooltip>
+                <IconUpload size={20} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="選択した写真をダウンロード">
+              <ActionIcon
+                variant="filled"
+                color="teal"
+                onClick={handleBulkDownload}
+                size="lg"
+                disabled={selectedPhotos.length === 0 || isZipping}
+              >
+                <IconDownload size={20} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="アルバムリンクをコピー">
+              <ActionIcon
+                variant="filled"
+                color="gray"
+                onClick={() => {
+                  clipboard.copy(window.location.href);
+                  notifications.show({
+                    title: 'リンクをコピーしました',
+                    message: 'アルバムリンクをクリップボードにコピーしました。',
+                    color: 'green',
+                  });
+                }}
+                size="lg"
+              >
+                <IconShare size={20} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="アルバムを削除">
+              <ActionIcon
+                variant="filled"
+                color="red"
+                onClick={handleDeleteAlbum}
+                size="lg"
+              >
+                <IconTrash size={20} />
+              </ActionIcon>
+            </Tooltip>
           </Group>
         </Group>
 
