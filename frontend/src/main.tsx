@@ -2,11 +2,15 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { MantineProvider, AppShell } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
+import { Notifications } from '@mantine/notifications'
 import './index.css'
 import '@mantine/core/styles.css'
-import { PhotoListPage } from './pages/PhotoListPage.tsx'
-import { UploadPage } from './pages/UploadPage.tsx'
+import '@mantine/notifications/styles.css'
 import { Header } from './components/Header.tsx'
+import { HomePage } from './pages/HomePage.tsx'
+import { CreateAlbumPage } from './pages/CreateAlbumPage.tsx'
+import { AlbumViewPage } from './pages/AlbumViewPage.tsx'
+import { UploadPage } from './pages/UploadPage.tsx'
 
 function App() {
   const [opened, { toggle }] = useDisclosure()
@@ -23,9 +27,13 @@ function App() {
         </AppShell.Header>
 
         <AppShell.Main>
+          <Notifications />
           <Routes>
-            <Route path="/" element={<PhotoListPage />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/create-album" element={<CreateAlbumPage />} />
+            <Route path="/album/:custom_id" element={<AlbumViewPage />} />
             <Route path="/upload" element={<UploadPage />} />
+            <Route path="/album/:custom_id/upload" element={<UploadPage />} />
           </Routes>
         </AppShell.Main>
       </AppShell>
@@ -36,5 +44,5 @@ function App() {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <MantineProvider>
     <App />
-  </MantineProvider>,
+  </MantineProvider>
 )

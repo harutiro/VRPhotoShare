@@ -11,8 +11,14 @@
     "chakra:provider": "chakra-cli snippet add provider"
   },
   "dependencies": {
+    "axios": "^1.7.2",
     "@mantine/core": "^8.1.1",
+    "@mantine/dropzone": "^8.1.1",
     "@mantine/hooks": "^8.1.1",
+    "@mantine/notifications": "^8.1.1",
+    "@tabler/icons-react": "^3.34.0",
+    "file-saver": "^2.0.5",
+    "jszip": "^3.10.1",
     "postcss": "^8.5.6",
     "postcss-preset-mantine": "^1.17.0",
     "postcss-simple-vars": "^7.0.1",
@@ -22,6 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@types/file-saver": "^2.0.7",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",

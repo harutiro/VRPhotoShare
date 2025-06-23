@@ -5,6 +5,8 @@ services:
       - "3001:3000"
     env_file:
       - ./.env
+    networks:
+      - vr-photo-share-net
     depends_on:
       - db
 
@@ -12,6 +14,8 @@ services:
     build: ./frontend
     ports:
       - "5173:80"
+    networks:
+      - vr-photo-share-net
     depends_on:
       - backend
 
@@ -24,6 +28,12 @@ services:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     env_file:
       - ./.env
+    networks:
+      - vr-photo-share-net
 
 volumes:
-  postgres-data: 
+  postgres-data:
+
+networks:
+  vr-photo-share-net:
+    driver: bridge 

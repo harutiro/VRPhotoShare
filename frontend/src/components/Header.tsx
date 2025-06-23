@@ -1,4 +1,4 @@
-import { Burger, Group, Title } from '@mantine/core';
+import { Burger, Group, Title, Button } from '@mantine/core';
 import { Link } from 'react-router-dom';
 
 interface HeaderProps {
@@ -17,8 +17,8 @@ export const Header = ({ opened, toggle }: HeaderProps) => {
           </Link>
         </Title>
         <Group ml="xl" gap={20} visibleFrom="sm">
-          <Link to="/">Photo List</Link>
-          <Link to="/upload">Upload</Link>
+            <Button component={Link} to="/create-album" variant="default">Create Album</Button>
+            <Button component={Link} to="/upload">Upload Photos</Button>
         </Group>
       </Group>
     </Group>
