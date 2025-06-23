@@ -111,14 +111,12 @@ export const AlbumViewPage = () => {
   };
 
   const handleIndividualDownload = (photo: Photo) => {
-    const byteCharacters = atob(photo.data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], {type: 'image/jpeg'});
-    saveAs(blob, photo.name);
+    const link = document.createElement('a');
+    link.href = photo.url;
+    link.download = photo.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleBulkDownload = async () => {
@@ -130,7 +128,9 @@ export const AlbumViewPage = () => {
       const photosToDownload = photos.filter(p => selectedPhotos.includes(p.id));
 
       for (const photo of photosToDownload) {
-        zip.file(photo.name, photo.data, { base64: true });
+        const response = await fetch(photo.url);
+        const blob = await response.blob();
+        zip.file(photo.name, blob);
       }
 
       const content = await zip.generateAsync({ type: 'blob' });
