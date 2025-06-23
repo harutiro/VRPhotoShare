@@ -249,7 +249,15 @@ app.get('/api/albums/:custom_id/photos', async (c) => {
         const photos = await Promise.all(result.rows.map(async (row) => {
           // 公開バケットなので直接URLを使用
           const url = `http://localhost:9000/${MINIO_BUCKET}/${row.stored_filename}`;
-          return { id: row.id, name: row.name, url: url, image_data: row.image_data };
+          // image_dataからfile_dateを抽出
+          let fileDate = null;
+          if (row.image_data) {
+            try {
+              const meta = JSON.parse(row.image_data);
+              if (meta && meta.date) fileDate = meta.date;
+            } catch {}
+          }
+          return { id: row.id, name: row.name, url: url, image_data: row.image_data, file_date: fileDate };
         }));
         return c.json(photos);
     } catch (error) {
@@ -281,13 +289,21 @@ app.get('/api/photos', async (c) => {
         // クエリパラメータでソート順を指定（asc/desc）
         const sort = (c.req.query('sort') || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
         const result = await pool.query(
-            `SELECT id, filename as name, stored_filename FROM photos WHERE album_id IS NULL ORDER BY created_at ${sort}`
+            `SELECT id, filename as name, stored_filename, image_data FROM photos WHERE album_id IS NULL ORDER BY created_at ${sort}`
         );
         // presigned URLを生成
         const photos = await Promise.all(result.rows.map(async (row) => {
           // 公開バケットなので直接URLを使用
           const url = `http://localhost:9000/${MINIO_BUCKET}/${row.stored_filename}`;
-          return { id: row.id, name: row.name, url: url };
+          // image_dataからfile_dateを抽出
+          let fileDate = null;
+          if (row.image_data) {
+            try {
+              const meta = JSON.parse(row.image_data);
+              if (meta && meta.date) fileDate = meta.date;
+            } catch {}
+          }
+          return { id: row.id, name: row.name, url: url, image_data: row.image_data, file_date: fileDate };
         }));
         return c.json(photos);
     } catch (error) {
