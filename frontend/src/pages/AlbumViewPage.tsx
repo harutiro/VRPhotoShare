@@ -6,7 +6,7 @@ import {
 } from '@mantine/core';
 import { useDisclosure, useClipboard } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconDownload, IconTrash, IconShare, IconArrowsSort, IconEdit, IconUpload } from '@tabler/icons-react';
+import { IconDownload, IconTrash, IconShare, IconArrowsSort, IconEdit, IconUpload, IconLink } from '@tabler/icons-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
@@ -287,6 +287,20 @@ export const AlbumViewPage = () => {
               }}
             />
             <Group justify="flex-end" mt="md">
+              <Button 
+                leftSection={<IconLink size={14} />} 
+                variant="light"
+                onClick={() => {
+                  clipboard.copy(currentPhoto.url);
+                  notifications.show({
+                    title: 'リンクをコピーしました',
+                    message: 'ファイルの直リンクをクリップボードにコピーしました。',
+                    color: 'green',
+                  });
+                }}
+              >
+                リンクをコピー
+              </Button>
               <Button leftSection={<IconDownload size={14} />} onClick={() => handleIndividualDownload(currentPhoto)}>Download</Button>
               <Button color="red" leftSection={<IconTrash size={14} />} onClick={() => handleDelete(currentPhoto.id)}>Delete</Button>
             </Group>
