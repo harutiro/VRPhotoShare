@@ -15,6 +15,7 @@ interface Photo {
   name: string;
   data: string;
   url: string;
+  thumbnailUrl?: string;
   image_data?: string;
 }
 
@@ -431,7 +432,7 @@ export const AlbumViewPage = () => {
                             </ActionIcon>
                             <Card.Section>
                                 <Image
-                                    src={photo.url}
+                                    src={photo.thumbnailUrl || photo.url}
                                     height={180}
                                     alt={photo.name}
                                     onClick={() => handlePhotoClick(photo)}

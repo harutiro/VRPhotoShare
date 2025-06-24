@@ -17,5 +17,6 @@ CREATE TABLE photos (
     filename TEXT NOT NULL,
     stored_filename TEXT NOT NULL,
     image_data TEXT,
+    thumbnail_filename TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 ); 

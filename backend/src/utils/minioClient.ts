@@ -14,3 +14,21 @@ export const minio = new MinioClient({
   accessKey: MINIO_ROOT_USER,
   secretKey: MINIO_ROOT_PASSWORD,
 }); 
+
+// Initialize bucket if it doesn't exist
+const initializeBucket = async () => {
+  try {
+    const bucketExists = await minio.bucketExists(MINIO_BUCKET);
+    if (!bucketExists) {
+      await minio.makeBucket(MINIO_BUCKET, 'us-east-1');
+      console.log(`Bucket ${MINIO_BUCKET} created successfully`);
+    } else {
+      console.log(`Bucket ${MINIO_BUCKET} already exists`);
+    }
+  } catch (error) {
+    console.error('Error initializing bucket:', error);
+  }
+};
+
+// Initialize bucket on startup
+initializeBucket();
