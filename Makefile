@@ -4,7 +4,7 @@ MINIO_BUCKET ?= vrphotoshare
 
 ENV_FILE = .env
 
-.PHONY: gen-minio-keys create-minio-bucket set-minio-public minio-setup dev setup stop clean db-init deploy deploy-stop deploy-clean migrate migrate-status migrate-to migrate-prod migrate-prod-force backup-db restore-db
+.PHONY: gen-minio-keys create-minio-bucket set-minio-public minio-setup dev setup stop clean db-init deploy deploy-stop deploy-clean migrate migrate-status migrate-to migrate-prod migrate-prod-force backup-db restore-db logs logs-backend logs-frontend logs-db logs-minio help
 
 gen-minio-keys:
 	@echo "MINIO_ROOT_USER=$(MINIO_ROOT_USER)" >> $(ENV_FILE)
@@ -190,3 +190,74 @@ restore-db:
 	else \
 		echo "❌ リストアがキャンセルされました。"; \
 	fi
+
+# ========================================
+# Logging Commands
+# ========================================
+
+# 全サービスのログを表示
+logs:
+	@echo "📋 全サービスのログを表示中..."
+	docker compose logs -f --tail=100
+
+# バックエンドサービスのログを表示
+logs-backend:
+	@echo "🔧 バックエンドサービスのログを表示中..."
+	docker compose logs -f --tail=100 backend
+
+# フロントエンドサービスのログを表示
+logs-frontend:
+	@echo "🎨 フロントエンドサービスのログを表示中..."
+	docker compose logs -f --tail=100 frontend
+
+# データベースサービスのログを表示
+logs-db:
+	@echo "🗄️  データベースサービスのログを表示中..."
+	docker compose logs -f --tail=100 db
+
+# MinIOサービスのログを表示
+logs-minio:
+	@echo "📦 MinIOサービスのログを表示中..."
+	docker compose logs -f --tail=100 minio
+
+# ========================================
+# Help
+# ========================================
+
+# ヘルプ表示
+help:
+	@echo "🎯 VRPhotoShare - 利用可能なコマンド"
+	@echo ""
+	@echo "📦 基本操作:"
+	@echo "  make setup          - 初回セットアップ（MinIO初期化＋docker起動）"
+	@echo "  make dev            - 開発用サーバー起動"
+	@echo "  make stop           - サービス停止"
+	@echo "  make clean          - ボリューム含む完全クリーン"
+	@echo ""
+	@echo "🔄 マイグレーション:"
+	@echo "  make migrate        - 全マイグレーション実行（開発環境）"
+	@echo "  make migrate-status - マイグレーション状況確認"
+	@echo "  make migrate-to VERSION=002 - 特定バージョンまで実行"
+	@echo "  make migrate-prod   - 本番環境マイグレーション（確認あり）"
+	@echo "  make migrate-prod-force - 本番環境マイグレーション（強制実行）"
+	@echo ""
+	@echo "💾 バックアップ:"
+	@echo "  make backup-db      - データベースバックアップ作成"
+	@echo "  make restore-db BACKUP_FILE=xxx.sql - データベースリストア"
+	@echo ""
+	@echo "📋 ログ表示:"
+	@echo "  make logs           - 全サービスのログ表示"
+	@echo "  make logs-backend   - バックエンドログ表示"
+	@echo "  make logs-frontend  - フロントエンドログ表示"
+	@echo "  make logs-db        - データベースログ表示"
+	@echo "  make logs-minio     - MinIOログ表示"
+	@echo ""
+	@echo "🚀 本番デプロイ:"
+	@echo "  make deploy         - 本番デプロイ"
+	@echo "  make deploy-stop    - 本番サービス停止"
+	@echo "  make deploy-clean   - 本番サービス完全削除"
+	@echo ""
+	@echo "📝 その他:"
+	@echo "  make db-init        - DB初期化"
+	@echo "  make minio-setup    - MinIO初期設定"
+	@echo "  make help           - このヘルプを表示"
