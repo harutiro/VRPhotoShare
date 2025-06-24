@@ -4,7 +4,7 @@ MINIO_BUCKET ?= vrphotoshare
 
 ENV_FILE = .env
 
-.PHONY: gen-minio-keys create-minio-bucket set-minio-public minio-setup dev setup stop clean db-init deploy deploy-stop deploy-clean
+.PHONY: gen-minio-keys create-minio-bucket set-minio-public minio-setup dev setup stop clean db-init deploy deploy-stop deploy-clean migrate migrate-status migrate-to migrate-prod migrate-prod-force backup-db restore-db
 
 gen-minio-keys:
 	@echo "MINIO_ROOT_USER=$(MINIO_ROOT_USER)" >> $(ENV_FILE)
@@ -72,3 +72,121 @@ deploy-stop:
 # 本番サービス完全削除（ボリューム含む）
 deploy-clean:
 	docker compose -f docker-compose.prod.yml down -v
+
+# ========================================
+# Database Migration Commands
+# ========================================
+
+# マイグレーション実行（開発環境）
+migrate:
+	@echo "🔄 マイグレーションを実行中..."
+	@for file in $$(ls db/migrations/*.sql | sort); do \
+		filename=$$(basename $$file .sql); \
+		echo "Checking migration: $$filename"; \
+		result=$$(docker compose exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -t -c "SELECT version FROM schema_migrations WHERE version = '$$filename';" 2>/dev/null || echo ""); \
+		if [ -z "$$result" ] || [ "$$(echo $$result | xargs)" = "" ]; then \
+			echo "⚡ Applying migration: $$filename"; \
+			docker compose exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/migrations/$$(basename $$file); \
+		else \
+			echo "✅ Migration already applied: $$filename"; \
+		fi; \
+	done
+	@echo "✨ マイグレーション完了！"
+
+# マイグレーション状況確認
+migrate-status:
+	@echo "📊 マイグレーション状況を確認中..."
+	@echo "=== 適用済みマイグレーション ==="
+	@docker compose exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -c "SELECT version, applied_at FROM schema_migrations ORDER BY version;" 2>/dev/null || echo "❌ schema_migrationsテーブルが見つかりません"
+	@echo ""
+	@echo "=== 利用可能なマイグレーション ==="
+	@ls db/migrations/*.sql 2>/dev/null || echo "❌ マイグレーションファイルが見つかりません"
+
+# 特定バージョンまでマイグレーション実行
+migrate-to:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "❌ VERSIONパラメータが必要です。例: make migrate-to VERSION=002"; \
+		exit 1; \
+	fi
+	@echo "🔄 バージョン $(VERSION) までマイグレーションを実行中..."
+	@for file in $$(ls db/migrations/*.sql | sort); do \
+		filename=$$(basename $$file .sql); \
+		version=$$(echo $$filename | cut -d'_' -f1); \
+		if [ "$$version" -le "$(VERSION)" ]; then \
+			result=$$(docker compose exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -t -c "SELECT version FROM schema_migrations WHERE version = '$$filename';" 2>/dev/null || echo ""); \
+			if [ -z "$$result" ] || [ "$$(echo $$result | xargs)" = "" ]; then \
+				echo "⚡ Applying migration: $$filename"; \
+				docker compose exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/migrations/$$(basename $$file); \
+			else \
+				echo "✅ Migration already applied: $$filename"; \
+			fi; \
+		fi; \
+	done
+	@echo "✨ バージョン $(VERSION) までのマイグレーション完了！"
+
+# 本番環境マイグレーション（確認あり）
+migrate-prod:
+	@echo "⚠️  本番環境でマイグレーションを実行しようとしています。"
+	@echo "📋 実行前に以下を確認してください："
+	@echo "   1. データベースのバックアップは取得済みですか？"
+	@echo "   2. マイグレーション内容を確認しましたか？"
+	@echo "   3. ダウンタイムの準備は完了していますか？"
+	@echo ""
+	@read -p "本当に実行しますか？ (yes/no): " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		echo "🔄 本番環境でマイグレーション実行中..."; \
+		for file in $$(ls db/migrations/*.sql | sort); do \
+			filename=$$(basename $$file .sql); \
+			echo "Checking migration: $$filename"; \
+			result=$$(docker compose -f docker-compose.prod.yml exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -t -c "SELECT version FROM schema_migrations WHERE version = '$$filename';" 2>/dev/null || echo ""); \
+			if [ -z "$$result" ] || [ "$$(echo $$result | xargs)" = "" ]; then \
+				echo "⚡ Applying migration: $$filename"; \
+				docker compose -f docker-compose.prod.yml exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/migrations/$$(basename $$file); \
+			else \
+				echo "✅ Migration already applied: $$filename"; \
+			fi; \
+		done; \
+		echo "✨ 本番環境マイグレーション完了！"; \
+	else \
+		echo "❌ マイグレーションがキャンセルされました。"; \
+	fi
+
+# 本番環境マイグレーション（強制実行）
+migrate-prod-force:
+	@echo "🔄 本番環境でマイグレーション強制実行中..."
+	@for file in $$(ls db/migrations/*.sql | sort); do \
+		filename=$$(basename $$file .sql); \
+		echo "Checking migration: $$filename"; \
+		result=$$(docker compose -f docker-compose.prod.yml exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -t -c "SELECT version FROM schema_migrations WHERE version = '$$filename';" 2>/dev/null || echo ""); \
+		if [ -z "$$result" ] || [ "$$(echo $$result | xargs)" = "" ]; then \
+			echo "⚡ Applying migration: $$filename"; \
+			docker compose -f docker-compose.prod.yml exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/migrations/$$(basename $$file); \
+		else \
+			echo "✅ Migration already applied: $$filename"; \
+		fi; \
+	done
+	@echo "✨ 本番環境マイグレーション完了！"
+
+# データベースバックアップ
+backup-db:
+	@echo "💾 データベースバックアップを作成中..."
+	@mkdir -p backups
+	@docker compose exec -T db pg_dump -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) > backups/backup_$$(date +%Y%m%d_%H%M%S).sql
+	@echo "✅ バックアップ完了: backups/backup_$$(date +%Y%m%d_%H%M%S).sql"
+
+# データベースリストア
+restore-db:
+	@if [ -z "$(BACKUP_FILE)" ]; then \
+		echo "❌ BACKUP_FILEパラメータが必要です。例: make restore-db BACKUP_FILE=backups/backup_20231201_120000.sql"; \
+		exit 1; \
+	fi
+	@echo "⚠️  データベースをリストアしようとしています。"
+	@echo "📋 現在のデータは全て削除されます。"
+	@read -p "本当に実行しますか？ (yes/no): " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		echo "🔄 データベースリストア中..."; \
+		docker compose exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) < $(BACKUP_FILE); \
+		echo "✅ リストア完了"; \
+	else \
+		echo "❌ リストアがキャンセルされました。"; \
+	fi
