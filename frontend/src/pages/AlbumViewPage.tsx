@@ -291,10 +291,11 @@ export const AlbumViewPage = () => {
                 leftSection={<IconLink size={14} />} 
                 variant="light"
                 onClick={() => {
-                  clipboard.copy(currentPhoto.url);
+                  const shareUrl = currentPhoto.thumbnailUrl || currentPhoto.url;
+                  clipboard.copy(shareUrl);
                   notifications.show({
                     title: 'リンクをコピーしました',
-                    message: 'ファイルの直リンクをクリップボードにコピーしました。',
+                    message: 'サムネイル画像の直リンクをクリップボードにコピーしました。',
                     color: 'green',
                   });
                 }}
