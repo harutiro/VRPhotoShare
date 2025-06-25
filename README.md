@@ -8,6 +8,57 @@ VRPhotoShareは、VRChatユーザー向けの匿名画像共有Webサービス�
 
 ---
 
+## ⚙️ 環境変数設定
+
+### .envファイルの作成
+
+初回起動前に、プロジェクトルートに `.env` ファイルを作成してください。  
+`env.example` を参考に以下のような内容で設定します：
+
+```bash
+# Database Configuration
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=vrphotoshare
+
+# MinIO Configuration
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin123
+
+# URL Configuration (開発環境)
+BASE_URL=http://localhost:3000
+MINIO_PUBLIC_URL=http://localhost:9000
+```
+
+### 本番環境での設定
+
+本番環境では、以下のように設定を変更してください：
+
+```bash
+# 本番環境用の設定例
+BASE_URL=https://your-domain.com
+MINIO_PUBLIC_URL=https://your-domain.com:9000
+
+# セキュリティのため、本番では強固なパスワードを使用
+POSTGRES_PASSWORD=your-strong-password
+MINIO_ROOT_PASSWORD=your-strong-minio-password
+```
+
+### 主な環境変数の説明
+
+| 変数名 | 説明 | デフォルト値 |
+|--------|------|------------|
+| `BASE_URL` | バックエンドAPIのベースURL | 開発:`http://localhost:3000`<br>本番:`https://your-domain.com` |
+| `MINIO_PUBLIC_URL` | MinIOの公開URL | 開発:`http://localhost:9000`<br>本番:`https://your-domain.com/minio-api` |
+| `VITE_BACKEND_URL` | フロントエンドからバックエンドへのプロキシURL | 開発:`http://backend:3000`<br>本番:`https://your-domain.com` |
+| `POSTGRES_USER` | PostgreSQLのユーザー名 | `postgres` |
+| `POSTGRES_PASSWORD` | PostgreSQLのパスワード | `postgres` |
+| `POSTGRES_DB` | PostgreSQLのデータベース名 | `vrphotoshare` |
+| `MINIO_ROOT_USER` | MinIOの管理者ユーザー名 | `minioadmin` |
+| `MINIO_ROOT_PASSWORD` | MinIOの管理者パスワード | `minioadmin123` |
+
+---
+
 ## 🚀 クイックスタート
 
 ### 1. 必要なもの
@@ -18,6 +69,10 @@ VRPhotoShareは、VRChatユーザー向けの匿名画像共有Webサービス�
 ### 2. 初回セットアップ
 
 ```sh
+# .envファイルを作成（env.exampleを参考に）
+cp env.example .env
+# 必要に応じて.envの内容を編集
+
 make setup
 ```
 - MinIOの初期化（バケット作成・公開化）

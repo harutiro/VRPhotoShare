@@ -4,18 +4,19 @@ import { extractPngPackage } from '../utils/pngMeta';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
 
+// URL構築のヘルパー関数
+const buildFileUrl = (filename: string): string => {
+  const minioPublicUrl = process.env.MINIO_PUBLIC_URL || 'http://localhost:9000';
+  return `${minioPublicUrl}/${MINIO_BUCKET}/${filename}`;
+};
+
 export const getAllPhotos = async (sort: string) => {
   const result = await pool.query(
     `SELECT id, filename as name, stored_filename, image_data, thumbnail_filename FROM photos WHERE album_id IS NULL ORDER BY created_at ${sort.toUpperCase()}`
   );
   return result.rows.map(row => {
-    const isProd = process.env.NODE_ENV === 'production';
-    const url = isProd
-      ? `/minio-api/${MINIO_BUCKET}/${row.stored_filename}`
-      : `http://localhost:9000/${MINIO_BUCKET}/${row.stored_filename}`;
-    const thumbnailUrl = row.thumbnail_filename ? (isProd
-      ? `/minio-api/${MINIO_BUCKET}/${row.thumbnail_filename}`
-      : `http://localhost:9000/${MINIO_BUCKET}/${row.thumbnail_filename}`) : null;
+    const url = buildFileUrl(row.stored_filename);
+    const thumbnailUrl = row.thumbnail_filename ? buildFileUrl(row.thumbnail_filename) : null;
     let fileDate = null;
     if (row.image_data) {
       try {
@@ -37,13 +38,8 @@ export const getPhotosByAlbumCustomId = async (custom_id: string, sort: string) 
     [custom_id]
   );
   return result.rows.map(row => {
-    const isProd = process.env.NODE_ENV === 'production';
-    const url = isProd
-      ? `/minio-api/${MINIO_BUCKET}/${row.stored_filename}`
-      : `http://localhost:9000/${MINIO_BUCKET}/${row.stored_filename}`;
-    const thumbnailUrl = row.thumbnail_filename ? (isProd
-      ? `/minio-api/${MINIO_BUCKET}/${row.thumbnail_filename}`
-      : `http://localhost:9000/${MINIO_BUCKET}/${row.thumbnail_filename}`) : null;
+    const url = buildFileUrl(row.stored_filename);
+    const thumbnailUrl = row.thumbnail_filename ? buildFileUrl(row.thumbnail_filename) : null;
     let fileDate = null;
     if (row.image_data) {
       try {

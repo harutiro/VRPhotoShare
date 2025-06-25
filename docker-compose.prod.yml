@@ -6,7 +6,7 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - ./.env
+      - ./.env.prod
     environment:
       - NODE_ENV=production
     networks:
@@ -21,6 +21,8 @@ services:
       target: prod
     ports:
       - 80:80  # 本番はnginxで80番
+    env_file:
+      - ./.env.prod
     networks:
       - vr-photo-share-net
     depends_on:
@@ -35,7 +37,7 @@ services:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./db/migrations:/docker-entrypoint-initdb.d/migrations
     env_file:
-      - ./.env
+      - ./.env.prod
     networks:
       - vr-photo-share-net
 
@@ -45,9 +47,8 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    env_file:
+      - ./.env.prod
     command: server --console-address ":9001" /data
     volumes:
       - minio-data:/data

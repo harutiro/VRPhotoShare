@@ -4,13 +4,7 @@ MINIO_BUCKET ?= vrphotoshare
 
 ENV_FILE = .env
 
-.PHONY: gen-minio-keys create-minio-bucket set-minio-public minio-setup dev setup stop clean db-init deploy deploy-stop deploy-clean migrate migrate-status migrate-to migrate-prod migrate-prod-force backup-db restore-db logs logs-backend logs-frontend logs-db logs-minio help
-
-gen-minio-keys:
-	@echo "MINIO_ROOT_USER=$(MINIO_ROOT_USER)" >> $(ENV_FILE)
-	@echo "MINIO_ROOT_PASSWORD=$(MINIO_ROOT_PASSWORD)" >> $(ENV_FILE)
-	@echo "MINIO_BUCKET=$(MINIO_BUCKET)" >> $(ENV_FILE)
-	@echo "MinIOのアクセスキー・シークレットキー・バケット名を$(ENV_FILE)に書き込みました。"
+.PHONY: create-minio-bucket set-minio-public minio-setup dev setup stop clean db-init deploy deploy-stop deploy-clean migrate migrate-status migrate-to migrate-prod migrate-prod-force backup-db restore-db logs logs-backend logs-frontend logs-db logs-minio help
 
 create-minio-bucket:
 	@echo "MinIOバケットを作成中..."
@@ -27,7 +21,7 @@ set-minio-public:
 	@echo "MinIOバケット($(MINIO_BUCKET))に公開権限を設定しました。"
 
 # MinIOの完全な初期設定（キー生成、バケット作成、公開権限設定をまとめて実行）
-minio-setup: gen-minio-keys create-minio-bucket set-minio-public
+minio-setup: create-minio-bucket set-minio-public
 	@echo ""
 	@echo "🎉 MinIOの初期設定が完了しました！"
 	@echo "📁 バケット名: $(MINIO_BUCKET)"
