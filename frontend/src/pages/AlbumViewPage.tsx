@@ -62,6 +62,29 @@ export const AlbumViewPage = () => {
         const albumData = await albumResponse.json();
         setAlbum(albumData);
 
+        // 閲覧履歴をlocalStorageに保存
+        const viewedAlbum = {
+          custom_id: albumData.custom_id,
+          name: albumData.name,
+          viewedAt: new Date().toISOString()
+        };
+        
+        // 既存の閲覧履歴を取得
+        const existingHistory = localStorage.getItem('viewedAlbums');
+        let history: typeof viewedAlbum[] = existingHistory ? JSON.parse(existingHistory) : [];
+        
+        // 同じアルバムがあれば削除（重複を避けるため）
+        history = history.filter(item => item.custom_id !== albumData.custom_id);
+        
+        // 新しいアルバムを先頭に追加
+        history.unshift(viewedAlbum);
+        
+        // 最大10件まで保持
+        history = history.slice(0, 10);
+        
+        // localStorageに保存
+        localStorage.setItem('viewedAlbums', JSON.stringify(history));
+
         const photosResponse = await fetch(`/api/albums/${custom_id}/photos?sort=${sortOrder}`);
         if (!photosResponse.ok) {
             throw new Error('Failed to fetch photos for the album.');

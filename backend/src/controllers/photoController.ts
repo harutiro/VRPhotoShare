@@ -31,4 +31,13 @@ export const deletePhoto = async (c: Context) => {
   const { id } = c.req.param();
   const result = await photoService.removePhoto(Number(id));
   return c.json(result, 200);
+};
+
+export const getAlbumThumbnail = async (c: Context) => {
+  const { custom_id } = c.req.param();
+  const thumbnail = await photoService.fetchAlbumThumbnail(custom_id);
+  if (!thumbnail) {
+    return c.json({ error: 'No photos found in this album' }, 404);
+  }
+  return c.json(thumbnail);
 }; 

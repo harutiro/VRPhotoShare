@@ -1,12 +1,95 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Title, Paper, Group, TextInput, Button, Text, Stack, Card, Grid, Alert } from '@mantine/core';
+import { Container, Title, Paper, Group, TextInput, Button, Text, Stack, Card, Grid, Alert, Box } from '@mantine/core';
 import { IconSearch, IconAlertTriangle } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+
+interface ViewedAlbum {
+  custom_id: string;
+  name: string;
+  viewedAt: string;
+}
+
+interface AlbumThumbnail {
+  id: number;
+  name: string;
+  url: string;
+  thumbnailUrl?: string;
+}
 
 export const HomePage = () => {
   const navigate = useNavigate();
   const [albumId, setAlbumId] = useState('');
+  const [viewedAlbums, setViewedAlbums] = useState<ViewedAlbum[]>([]);
+  const [albumThumbnails, setAlbumThumbnails] = useState<Record<string, AlbumThumbnail | null>>({});
+
+  // 閲覧履歴を取得
+  const getViewedAlbums = (): ViewedAlbum[] => {
+    try {
+      const history = localStorage.getItem('viewedAlbums');
+      return history ? JSON.parse(history) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  // 初回ロード時に閲覧履歴を取得
+  useEffect(() => {
+    console.log('Loading viewed albums from localStorage');
+    const albums = getViewedAlbums();
+    console.log('Found viewed albums:', albums);
+    setViewedAlbums(albums);
+  }, []);
+
+  // アルバムのサムネイルを取得
+  const fetchAlbumThumbnail = async (customId: string) => {
+    try {
+      console.log(`Fetching thumbnail for album: ${customId}`);
+      const response = await fetch(`/api/albums/${customId}/thumbnail`);
+      console.log(`Thumbnail response for ${customId}:`, response.status);
+      if (response.ok) {
+        const thumbnail = await response.json();
+        console.log(`Thumbnail data for ${customId}:`, thumbnail);
+        return thumbnail;
+      }
+      console.log(`No thumbnail found for ${customId}`);
+      return null;
+    } catch (error) {
+      console.error(`Error fetching thumbnail for ${customId}:`, error);
+      return null;
+    }
+  };
+
+  // 閲覧履歴のアルバムのサムネイルを取得
+  useEffect(() => {
+    const loadThumbnails = async () => {
+      console.log('Loading thumbnails for albums:', viewedAlbums);
+      if (viewedAlbums.length === 0) {
+        console.log('No viewed albums, clearing thumbnails');
+        setAlbumThumbnails({});
+        return;
+      }
+
+      // 現在のサムネイルをクリア
+      setAlbumThumbnails({});
+      
+      const thumbnails: Record<string, AlbumThumbnail | null> = {};
+      
+      for (const album of viewedAlbums.slice(0, 6)) {
+        console.log(`Loading thumbnail for album: ${album.custom_id}`);
+        const thumbnail = await fetchAlbumThumbnail(album.custom_id);
+        thumbnails[album.custom_id] = thumbnail;
+        // 1つずつ更新して即座に反映
+        setAlbumThumbnails(prev => ({ ...prev, [album.custom_id]: thumbnail }));
+      }
+      
+      console.log('Final thumbnails:', thumbnails);
+    };
+
+    // 少し遅延を入れてからサムネイルを読み込む
+    const timeoutId = setTimeout(loadThumbnails, 100);
+    return () => clearTimeout(timeoutId);
+  }, [viewedAlbums.length]);
 
   const handleViewAlbum = async () => {
     if (!albumId.trim()) return;
@@ -30,6 +113,16 @@ export const HomePage = () => {
         color: 'red',
       });
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ja-JP', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
@@ -88,6 +181,79 @@ export const HomePage = () => {
             </Paper>
           </Grid.Col>
         </Grid>
+
+        {/* 最近見たアルバム */}
+        {viewedAlbums.length > 0 && (
+          <Card shadow="sm" padding="lg" radius="md" withBorder>
+            <Title order={3} mb="md">最近見たアルバム</Title>
+            <Grid>
+              {viewedAlbums.slice(0, 6).map((album) => {
+                const thumbnail = albumThumbnails[album.custom_id];
+                return (
+                  <Grid.Col key={album.custom_id} span={{ base: 12, sm: 6, md: 4 }}>
+                    <Paper 
+                      shadow="xs" 
+                      p={0}
+                      withBorder 
+                      style={{ cursor: 'pointer', overflow: 'hidden' }}
+                      onClick={() => navigate(`/album/${album.custom_id}`)}
+                    >
+                      <Box pos="relative">
+                        {/* サムネイル画像 */}
+                        <Box
+                          h={120}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: thumbnail && thumbnail.thumbnailUrl ? 'transparent' : '#f1f3f4',
+                            backgroundImage: thumbnail && thumbnail.thumbnailUrl ? `url(${thumbnail.thumbnailUrl})` : undefined,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            backgroundRepeat: 'no-repeat'
+                          }}
+                        >
+                          {(!thumbnail || !thumbnail.thumbnailUrl) && (
+                            <Text c="dimmed" size="sm">
+                              {thumbnail === null ? '画像なし' : '読み込み中...'}
+                            </Text>
+                          )}
+                        </Box>
+                        
+                        {/* アルバム情報オーバーレイ */}
+                        <Box
+                          pos="absolute"
+                          bottom={0}
+                          left={0}
+                          right={0}
+                          bg="rgba(0, 0, 0, 0.7)"
+                          p="sm"
+                        >
+                          <Stack gap="xs">
+                            <Text fw={500} size="sm" c="white" truncate>
+                              {album.name}
+                            </Text>
+                            <Text c="white" size="xs" opacity={0.8}>
+                              ID: {album.custom_id}
+                            </Text>
+                            <Text c="white" size="xs" opacity={0.8}>
+                              {formatDate(album.viewedAt)}
+                            </Text>
+                          </Stack>
+                        </Box>
+                      </Box>
+                    </Paper>
+                  </Grid.Col>
+                );
+              })}
+            </Grid>
+            {viewedAlbums.length > 6 && (
+              <Text c="dimmed" size="sm" ta="center" mt="md">
+                他 {viewedAlbums.length - 6} 件
+              </Text>
+            )}
+          </Card>
+        )}
 
         <Card shadow="sm" padding="lg" radius="md" withBorder>
           <Title order={3} mb="sm">使い方</Title>

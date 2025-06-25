@@ -155,4 +155,31 @@ export const deletePhotoById = async (id: number) => {
     return { error: 'Photo not found', status: 404 };
   }
   return { message: 'Photo deleted successfully' };
+};
+
+export const getAlbumThumbnail = async (custom_id: string) => {
+  const result = await pool.query(
+    `SELECT p.id, p.filename as name, p.stored_filename, p.thumbnail_filename
+     FROM photos p
+     JOIN albums a ON p.album_id = a.id
+     WHERE a.custom_id = $1
+     ORDER BY p.created_at ASC
+     LIMIT 1`,
+    [custom_id]
+  );
+  
+  if (result.rows.length === 0) {
+    return null;
+  }
+  
+  const row = result.rows[0];
+  const url = buildFileUrl(row.stored_filename);
+  const thumbnailUrl = row.thumbnail_filename ? buildFileUrl(row.thumbnail_filename) : null;
+  
+  return { 
+    id: row.id, 
+    name: row.name, 
+    url, 
+    thumbnailUrl 
+  };
 }; 

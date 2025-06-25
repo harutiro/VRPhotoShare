@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { getAlbums, createAlbum, getAlbumDetail, updateAlbum, deleteAlbum } from '../controllers/albumController';
-import { getAlbumPhotos, uploadAlbumPhotos } from '../controllers/photoController';
+import { getAlbumPhotos, uploadAlbumPhotos, getAlbumThumbnail } from '../controllers/photoController';
 
 export const albumRouter = new Hono();
 
@@ -12,5 +12,6 @@ albumRouter.delete('/:custom_id', deleteAlbum); // 削除
 
 albumRouter.get('/:custom_id/photos', getAlbumPhotos); // アルバム内写真一覧
 albumRouter.post('/:custom_id/photos', uploadAlbumPhotos); // アルバム内写真アップロード
+albumRouter.get('/:custom_id/thumbnail', getAlbumThumbnail); // アルバムサムネイル取得
 
 // ここにアルバム関連のルーティングを追加していく 

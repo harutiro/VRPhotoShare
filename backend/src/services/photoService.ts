@@ -23,4 +23,8 @@ export const uploadNewAlbumPhotos = async (custom_id: string, photos: any[]) => 
 
 export const removePhoto = async (id: number) => {
   return await photoRepo.deletePhotoById(id);
+};
+
+export const fetchAlbumThumbnail = async (custom_id: string) => {
+  return await photoRepo.getAlbumThumbnail(custom_id);
 }; 
