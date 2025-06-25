@@ -300,7 +300,7 @@ export const AlbumViewPage = () => {
                   });
                 }}
               >
-                リンクをコピー
+                imagePad用リンクをコピー
               </Button>
               <Button leftSection={<IconDownload size={14} />} onClick={() => handleIndividualDownload(currentPhoto)}>Download</Button>
               <Button color="red" leftSection={<IconTrash size={14} />} onClick={() => handleDelete(currentPhoto.id)}>Delete</Button>
