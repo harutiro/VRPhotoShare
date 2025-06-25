@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { ViewedAlbum, AlbumThumbnail } from '../types/album';
-import { fetchAlbumThumbnail } from '../utils/albumApi';
 
 export const useAlbumThumbnails = (
   viewedAlbums: ViewedAlbum[], 
