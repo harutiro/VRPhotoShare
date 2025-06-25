@@ -50,7 +50,6 @@ MINIO_ROOT_PASSWORD=your-strong-minio-password
 |--------|------|------------|
 | `BASE_URL` | バックエンドAPIのベースURL | 開発:`http://localhost:3000`<br>本番:`https://your-domain.com` |
 | `MINIO_PUBLIC_URL` | MinIOの公開URL | 開発:`http://localhost:9000`<br>本番:`https://your-domain.com/minio-api` |
-| `VITE_BACKEND_URL` | フロントエンドからバックエンドへのプロキシURL | 開発:`http://backend:3000`<br>本番:`https://your-domain.com` |
 | `POSTGRES_USER` | PostgreSQLのユーザー名 | `postgres` |
 | `POSTGRES_PASSWORD` | PostgreSQLのパスワード | `postgres` |
 | `POSTGRES_DB` | PostgreSQLのデータベース名 | `vrphotoshare` |
