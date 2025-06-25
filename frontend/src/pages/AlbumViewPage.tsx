@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Text, Center, Button, LoadingOverlay } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -18,6 +18,7 @@ import { usePhotoSelection } from '../hooks/usePhotoSelection';
 import { useWorldGrouping } from '../hooks/useWorldGrouping';
 import { usePhotoActions } from '../hooks/usePhotoActions';
 import { useAlbumActions } from '../hooks/useAlbumActions';
+import { useViewedAlbums } from '../hooks/useViewedAlbums';
 
 export const AlbumViewPage = () => {
   const { custom_id } = useParams<{ custom_id: string }>();
@@ -28,6 +29,7 @@ export const AlbumViewPage = () => {
 
   // カスタムフック
   const { album, photos, loading, error, setAlbum, setPhotos } = useAlbumData(custom_id, sortOrder);
+  const { addToViewedAlbums, removeFromViewedAlbums } = useViewedAlbums();
   const {
     selectedPhotos,
     setSelectedPhotos,
@@ -51,7 +53,18 @@ export const AlbumViewPage = () => {
     startEditName,
     saveEditName,
     handleDeleteAlbum
-  } = useAlbumActions(album, setAlbum, navigate);
+  } = useAlbumActions(album, setAlbum, navigate, removeFromViewedAlbums);
+
+  // アルバムが読み込まれた時に閲覧履歴に追加
+  useEffect(() => {
+    if (album) {
+      addToViewedAlbums({
+        custom_id: album.custom_id,
+        name: album.name,
+        viewedAt: new Date().toISOString()
+      });
+    }
+  }, [album, addToViewedAlbums]);
 
   // イベントハンドラー
   const handlePhotoClick = (photo: Photo) => {

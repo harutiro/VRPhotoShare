@@ -5,7 +5,8 @@ import type { Album } from '../types/photo';
 export const useAlbumActions = (
   album: Album | null,
   setAlbum: React.Dispatch<React.SetStateAction<Album | null>>,
-  navigate: (path: string) => void
+  navigate: (path: string) => void,
+  removeFromViewedAlbums?: (customId: string) => void
 ) => {
   const [editName, setEditName] = useState('');
   const [editModalOpened, setEditModalOpened] = useState(false);
@@ -44,6 +45,14 @@ export const useAlbumActions = (
     try {
       const res = await fetch(`/api/albums/${album.custom_id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error();
+      
+      console.log('アルバム削除成功、閲覧履歴から削除中:', album.custom_id);
+      if (removeFromViewedAlbums) {
+        removeFromViewedAlbums(album.custom_id);
+        console.log('閲覧履歴から削除完了:', album.custom_id);
+      } else {
+        console.log('removeFromViewedAlbums関数が見つからない');
+      }
       
       notifications.show({ title: '削除完了', message: 'アルバムを削除しました', color: 'green' });
       navigate('/');

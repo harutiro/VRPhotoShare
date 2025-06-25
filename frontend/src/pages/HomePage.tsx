@@ -19,8 +19,8 @@ import { checkAlbumExists } from '../utils/albumApi';
 
 export const HomePage = () => {
   const navigate = useNavigate();
-  const { viewedAlbums } = useViewedAlbums();
-  const albumThumbnails = useAlbumThumbnails(viewedAlbums);
+  const { viewedAlbums, removeFromViewedAlbums } = useViewedAlbums();
+  const albumThumbnails = useAlbumThumbnails(viewedAlbums, removeFromViewedAlbums);
 
   const handleCreateAlbum = () => {
     navigate('/create-album');
