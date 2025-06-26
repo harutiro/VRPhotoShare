@@ -186,6 +186,34 @@ restore-db:
 	fi
 
 # ========================================
+# Folder Structure Migration
+# ========================================
+
+# 既存の写真を新しいディレクトリ構造に移行
+folder-reformat:
+	@echo "📁 既存写真のフォルダ構造移行を開始します..."
+	@echo "⚠️  この操作は以下を実行します："
+	@echo "   1. MinIO内のファイルを新しいディレクトリ構造に移動"
+	@echo "   2. データベースのパス情報を更新"
+	@echo "   3. アルバムあり: albums/{custom_id}/ に移動"
+	@echo "   4. アルバムなし: photos/ に移動"
+	@echo ""
+	@read -p "実行前にバックアップを取得しましたか？ 続行しますか？ (yes/no): " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		echo "🔄 フォルダ構造移行実行中..."; \
+		docker compose exec backend npm run folder-reformat; \
+		echo "✨ フォルダ構造移行完了！"; \
+	else \
+		echo "❌ フォルダ構造移行がキャンセルされました。"; \
+	fi
+
+# 強制実行（確認なし）
+folder-reformat-force:
+	@echo "🔄 フォルダ構造移行強制実行中..."
+	docker compose exec backend npm run folder-reformat
+	@echo "✨ フォルダ構造移行完了！"
+
+# ========================================
 # Logging Commands
 # ========================================
 
@@ -238,6 +266,10 @@ help:
 	@echo "💾 バックアップ:"
 	@echo "  make backup-db      - データベースバックアップ作成"
 	@echo "  make restore-db BACKUP_FILE=xxx.sql - データベースリストア"
+	@echo ""
+	@echo "📁 フォルダ構造移行:"
+	@echo "  make folder-reformat - 既存写真を新しいディレクトリ構造に移行（確認あり）"
+	@echo "  make folder-reformat-force - 既存写真を新しいディレクトリ構造に移行（強制実行）"
 	@echo ""
 	@echo "📋 ログ表示:"
 	@echo "  make logs           - 全サービスのログ表示"
