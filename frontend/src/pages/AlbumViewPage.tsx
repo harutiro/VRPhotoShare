@@ -11,6 +11,7 @@ import { PhotoModal } from '../components/PhotoModal';
 import { AlbumEditModal } from '../components/AlbumEditModal';
 import { AlbumHeader } from '../components/AlbumHeader';
 import { PhotoGrid } from '../components/PhotoGrid';
+import { DownloadProgressModal } from '../components/DownloadProgressModal';
 
 // Hooks
 import { useAlbumData } from '../hooks/useAlbumData';
@@ -39,7 +40,14 @@ export const AlbumViewPage = () => {
     handleSelectAllChange
   } = usePhotoSelection(photos);
   const worldGroups = useWorldGrouping(photos);
-  const { isZipping, handleDelete, handleIndividualDownload, handleBulkDownload } = usePhotoActions(
+  const { 
+    isZipping, 
+    downloadProgress, 
+    handleDelete, 
+    handleIndividualDownload, 
+    handleBulkDownload, 
+    cancelDownload 
+  } = usePhotoActions(
     photos,
     setPhotos,
     album,
@@ -123,9 +131,19 @@ export const AlbumViewPage = () => {
         onEditNameChange={setEditName}
       />
 
+      <DownloadProgressModal
+        opened={downloadProgress.isActive}
+        progress={downloadProgress}
+        onCancel={cancelDownload}
+      />
+
       {/* メインコンテンツ */}
       <Container my="md" pos="relative">
-        <LoadingOverlay visible={isZipping} overlayProps={{ radius: "sm", blur: 2 }} />
+        {/* 詳細進捗モーダルがある場合は基本的なロードingオーバーレイは非表示 */}
+        <LoadingOverlay 
+          visible={isZipping && !downloadProgress.isActive} 
+          overlayProps={{ radius: "sm", blur: 2 }} 
+        />
 
         <AlbumHeader
           album={album}
