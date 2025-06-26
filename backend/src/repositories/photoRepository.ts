@@ -22,7 +22,9 @@ export const getAllPhotos = async (sort: string) => {
       try {
         const meta = JSON.parse(row.image_data);
         if (meta && meta.date) fileDate = meta.date;
-      } catch {}
+      } catch {
+        // JSONパースエラーは無視
+      }
     }
     return { id: row.id, name: row.name, url, thumbnailUrl, image_data: row.image_data, file_date: fileDate };
   });
@@ -45,7 +47,9 @@ export const getPhotosByAlbumCustomId = async (custom_id: string, sort: string) 
       try {
         const meta = JSON.parse(row.image_data);
         if (meta && meta.date) fileDate = meta.date;
-      } catch {}
+      } catch {
+        // JSONパースエラーは無視
+      }
     }
     return { id: row.id, name: row.name, url, thumbnailUrl, image_data: row.image_data, file_date: fileDate };
   });
@@ -202,7 +206,7 @@ export const updateWorldInfoForPhotos = async (custom_id: string | null) => {
           if (meta && meta.date) {
             photoDate = new Date(meta.date);
           }
-        } catch (e) {
+        } catch {
           // メタデータが不正な場合は無視
         }
       }
@@ -247,7 +251,7 @@ export const updateWorldInfoForPhotos = async (custom_id: string | null) => {
           if (photo.originalMeta) {
             try {
               updatedMeta = JSON.parse(photo.originalMeta);
-            } catch (e) {
+            } catch {
               // パース失敗時は空オブジェクトから開始
             }
           }

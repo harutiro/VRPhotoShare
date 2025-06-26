@@ -1,7 +1,4 @@
 import * as photoRepo from '../repositories/photoRepository';
-import { v4 as uuidv4 } from 'uuid';
-import { minio, MINIO_BUCKET } from '../utils/minioClient';
-import { extractPngPackage } from '../utils/pngMeta';
 
 export const fetchPhotos = async (sort: string) => {
   return await photoRepo.getAllPhotos(sort);

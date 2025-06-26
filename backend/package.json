@@ -6,6 +6,8 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "build": "tsc",
+    "lint": "eslint src --ext .ts --max-warnings 10",
+    "lint:fix": "eslint src --ext .ts --max-warnings 10 --fix",
     "folder-reformat": "tsx src/utils/folderReformat.ts"
   },
   "dependencies": {
@@ -17,9 +19,13 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.29.0",
     "@types/node": "^20.10.4",
     "@types/pg": "^8.11.6",
     "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/parser": "^8.35.0",
+    "eslint": "^9.29.0",
     "tsx": "^4.6.2",
     "typescript": "^5.3.3"
   }

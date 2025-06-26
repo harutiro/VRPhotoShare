@@ -1,7 +1,7 @@
 import { Title, Text, Group, Button, SimpleGrid, Image, Stack, Badge, Box, Overlay, Center, Loader, Progress } from '@mantine/core';
 import { Dropzone, IMAGE_MIME_TYPE } from '@mantine/dropzone';
 import { IconUpload, IconPhoto, IconX, IconCheck, IconClock, IconRefresh, IconTrash } from '@tabler/icons-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { FileWithPath, BatchUploadState, FileUploadItem } from '../types/upload';
 
 interface FileUploadSectionProps {
@@ -99,6 +99,12 @@ export const FileUploadSection = ({
     return { percentage, completedFiles, totalFiles };
   };
 
+  const handleFilesSelect = useCallback((newFiles: FileWithPath[]) => {
+    setIsDragging(false);
+    dragCounterRef.current = 0;
+    onBatchFilesSelect(newFiles);
+  }, [onBatchFilesSelect]);
+
   // ページ全体でのドラッグアンドドロップイベントを処理
   useEffect(() => {
     const handleDragEnter = (e: DragEvent) => {
@@ -135,7 +141,7 @@ export const FileUploadSection = ({
         
         // ファイル形式をチェック
         const validFiles = droppedFiles.filter(file => 
-          IMAGE_MIME_TYPE.includes(file.type)
+          (IMAGE_MIME_TYPE as readonly string[]).includes(file.type)
         );
         
         if (validFiles.length > 0) {
@@ -159,13 +165,7 @@ export const FileUploadSection = ({
       document.removeEventListener('dragover', handleDragOver);
       document.removeEventListener('drop', handleDrop);
     };
-  }, [onBatchFilesSelect, onFilesReject]);
-
-  const handleFilesSelect = (newFiles: FileWithPath[]) => {
-    setIsDragging(false);
-    dragCounterRef.current = 0;
-    onBatchFilesSelect(newFiles);
-  };
+  }, [handleFilesSelect, onFilesReject]);
 
   // バッチアップロード用のファイルアイテムを取得
   const getBatchFileItem = (file: FileWithPath): FileUploadItem | undefined => {

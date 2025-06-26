@@ -12,7 +12,7 @@ import { CreateAlbumPage } from './pages/CreateAlbumPage.tsx'
 import { AlbumViewPage } from './pages/AlbumViewPage.tsx'
 import { UploadPage } from './pages/UploadPage.tsx'
 
-function App() {
+export function App() {
   const [opened, { toggle }] = useDisclosure()
 
   return (

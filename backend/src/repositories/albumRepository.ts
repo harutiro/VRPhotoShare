@@ -77,7 +77,8 @@ export const deleteAlbumByCustomId = async (custom_id: string) => {
       
       // オブジェクトが残っていないか確認して、空の場合はディレクトリを削除
       let hasObjects = false;
-      for await (const obj of objectsList) {
+      // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
+      for await (const _obj of objectsList) {
         hasObjects = true;
         break; // 1つでもオブジェクトがあればbreak
       }

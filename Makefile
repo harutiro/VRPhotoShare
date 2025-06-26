@@ -186,6 +186,41 @@ restore-db:
 	fi
 
 # ========================================
+# Lint Commands
+# ========================================
+
+# 全プロジェクトでlintを実行
+lint:
+	@echo "📋 Running lint for all projects..."
+	@echo "🔍 Frontend lint..."
+	@cd frontend && npm run lint
+	@echo "🔍 Backend lint..."
+	@cd backend && npm run lint
+	@echo "✅ All lint checks completed!"
+
+# 全プロジェクトでlint --fixを実行
+lint-fix:
+	@echo "🔧 Running lint --fix for all projects..."
+	@echo "🔧 Frontend lint --fix..."
+	@cd frontend && npm run lint:fix
+	@echo "🔧 Backend lint --fix..."
+	@cd backend && npm run lint:fix
+	@echo "✅ All lint fixes completed!"
+
+# ビルドチェック（push前チェックと同様）
+check:
+	@echo "🔍 Running pre-push checks..."
+	@echo "📋 Frontend lint..."
+	@cd frontend && npm run lint
+	@echo "🏗️  Frontend build..."
+	@cd frontend && npm run build
+	@echo "📋 Backend lint..."
+	@cd backend && npm run lint
+	@echo "🏗️  Backend build..."
+	@cd backend && npm run build
+	@echo "🎉 All checks passed!"
+
+# ========================================
 # Folder Structure Migration
 # ========================================
 
@@ -282,6 +317,11 @@ help:
 	@echo "  make deploy         - 本番デプロイ"
 	@echo "  make deploy-stop    - 本番サービス停止"
 	@echo "  make deploy-clean   - 本番サービス完全削除"
+	@echo ""
+	@echo "🔍 コード品質:"
+	@echo "  make lint           - 全プロジェクトでlint実行"
+	@echo "  make lint-fix       - 全プロジェクトでlint自動修正"
+	@echo "  make check          - push前チェック（lint + build）"
 	@echo ""
 	@echo "📝 その他:"
 	@echo "  make db-init        - DB初期化"

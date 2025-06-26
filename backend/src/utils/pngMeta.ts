@@ -31,6 +31,7 @@ export function extractPngPackage(buffer: Buffer): string | null {
           ptr++;
           if (ptr < chunkData.length) {
             const text = chunkData.slice(ptr).toString('utf8');
+            // eslint-disable-next-line no-control-regex
             return text.replace(/\u0000/g, '');
           }
         }
