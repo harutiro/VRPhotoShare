@@ -32,10 +32,11 @@ minio-setup: create-minio-bucket set-minio-public
 open-minio-console:
 	open http://localhost:9001
 
-# 1. 初回セットアップ（MinIO初期化＋docker起動）
+# 1. 初回セットアップ（MinIO初期化＋docker起動＋hooks）
 setup: 
 	docker compose up -d
 	make minio-setup
+	make setup-hooks
 
 # 2. 開発用サーバー起動（既に初期化済みならこれだけでOK）
 dev:
@@ -186,6 +187,24 @@ restore-db:
 	fi
 
 # ========================================
+# Git Hooks Setup
+# ========================================
+
+# Git hookをセットアップ
+setup-hooks:
+	@echo "🔧 Setting up Git hooks..."
+	@chmod +x hooks/pre-push
+	@cp hooks/pre-push .git/hooks/pre-push
+	@echo "✅ Git hooks setup completed!"
+	@echo "💡 Pre-push hook will now automatically check code quality before push"
+
+# Git hookを削除
+remove-hooks:
+	@echo "🗑️  Removing Git hooks..."
+	@rm -f .git/hooks/pre-push
+	@echo "✅ Git hooks removed!"
+
+# ========================================
 # Lint Commands
 # ========================================
 
@@ -317,6 +336,10 @@ help:
 	@echo "  make deploy         - 本番デプロイ"
 	@echo "  make deploy-stop    - 本番サービス停止"
 	@echo "  make deploy-clean   - 本番サービス完全削除"
+	@echo ""
+	@echo "🔧 Git Hooks:"
+	@echo "  make setup-hooks    - Git hookをセットアップ（推奨）"
+	@echo "  make remove-hooks   - Git hookを削除"
 	@echo ""
 	@echo "🔍 コード品質:"
 	@echo "  make lint           - 全プロジェクトでlint実行"

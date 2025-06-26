@@ -1,0 +1,58 @@
+#!/bin/bash
+
+echo "🔍 Pre-push checks starting..."
+
+# カラー定義
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# エラーフラグ
+HAS_ERROR=0
+
+echo -e "${BLUE}📋 Running Frontend lint...${NC}"
+cd frontend
+if npm run lint; then
+    echo -e "${GREEN}✅ Frontend lint passed${NC}"
+else
+    echo -e "${RED}❌ Frontend lint failed${NC}"
+    HAS_ERROR=1
+fi
+
+echo -e "${BLUE}🏗️  Building Frontend...${NC}"
+if npm run build; then
+    echo -e "${GREEN}✅ Frontend build successful${NC}"
+else
+    echo -e "${RED}❌ Frontend build failed${NC}"
+    HAS_ERROR=1
+fi
+
+echo -e "${BLUE}📋 Running Backend lint...${NC}"
+cd ../backend
+if npm run lint; then
+    echo -e "${GREEN}✅ Backend lint passed${NC}"
+else
+    echo -e "${RED}❌ Backend lint failed${NC}"
+    HAS_ERROR=1
+fi
+
+echo -e "${BLUE}🏗️  Building Backend...${NC}"
+if npm run build; then
+    echo -e "${GREEN}✅ Backend build successful${NC}"
+else
+    echo -e "${RED}❌ Backend build failed${NC}"
+    HAS_ERROR=1
+fi
+
+cd ..
+
+if [ $HAS_ERROR -eq 1 ]; then
+    echo -e "${RED}❌ Pre-push checks failed. Push aborted.${NC}"
+    echo -e "${YELLOW}💡 Please fix the issues and try again.${NC}"
+    exit 1
+else
+    echo -e "${GREEN}🎉 All checks passed! Proceeding with push...${NC}"
+    exit 0
+fi 

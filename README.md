@@ -206,6 +206,11 @@ VRPhotoShare/
 | make clean       | ボリューム含め完全クリーン           |
 | make db-init     | DBスキーマ再投入                     |
 | make minio-setup | MinIOバケット初期化のみ              |
+| make setup-hooks | Git hookセットアップ（推奨）         |
+| make remove-hooks| Git hook削除                         |
+| make lint        | 全プロジェクトでlint実行             |
+| make lint-fix    | 全プロジェクトでlint自動修正         |
+| make check       | push前チェック（lint + build）      |
 
 ---
 
@@ -218,6 +223,48 @@ VRPhotoShare/
 - `GET /api/photos` … アルバム外写真一覧
 - `POST /api/photos` … アルバム外写真アップロード
 - `DELETE /api/photos/:id` … 写真削除
+
+---
+
+## 🔧 Git Hooks - コード品質管理
+
+### 自動コード品質チェック
+
+このプロジェクトではpush前に自動でコード品質をチェックするGit hookが設定されています。
+
+- **push前に自動実行**: TypeScript型チェック + ESLint + ビルドテスト
+- **コード品質の保証**: チーム全体で一貫したコード品質を維持
+- **チーム共有**: `hooks/`ディレクトリで管理され、Gitで共有可能
+
+### セットアップ
+
+Git hookは`make setup`で自動的にセットアップされますが、手動でも設定可能：
+
+```sh
+# Git hookを有効化（推奨）
+make setup-hooks
+
+# Git hookを無効化
+make remove-hooks
+```
+
+### 動作内容
+
+push実行時に以下が自動チェックされます：
+
+1. **バックエンド**: TypeScript型チェック、ESLint、ビルドテスト
+2. **フロントエンド**: TypeScript型チェック、ESLint、ビルドテスト
+3. **エラー時**: push中断、修正後に再pushが必要
+
+### 手動チェック
+
+push前に手動でコード品質をチェックできます：
+
+```sh
+make check      # 完全チェック（push前と同じ内容）
+make lint       # lint のみ
+make lint-fix   # lint エラーを可能な限り自動修正
+```
 
 ---
 
