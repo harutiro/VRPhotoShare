@@ -27,6 +27,20 @@ export const uploadAlbumPhotos = async (c: Context) => {
   return c.json(result, 201);
 };
 
+// 単一ファイルアップロード用のエンドポイント
+export const uploadSinglePhoto = async (c: Context) => {
+  const photo = await c.req.json();
+  const result = await photoService.uploadSinglePhoto(photo);
+  return c.json(result, 201);
+};
+
+export const uploadSingleAlbumPhoto = async (c: Context) => {
+  const { custom_id } = c.req.param();
+  const photo = await c.req.json();
+  const result = await photoService.uploadSingleAlbumPhoto(custom_id, photo);
+  return c.json(result, 201);
+};
+
 export const deletePhoto = async (c: Context) => {
   const { id } = c.req.param();
   const result = await photoService.removePhoto(Number(id));

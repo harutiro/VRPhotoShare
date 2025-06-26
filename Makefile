@@ -39,8 +39,8 @@ setup:
 
 # 2. 開発用サーバー起動（既に初期化済みならこれだけでOK）
 dev:
-	docker compose up
 	open http://localhost:5173
+	docker compose up -d
 
 # 3. サービス停止
 stop:

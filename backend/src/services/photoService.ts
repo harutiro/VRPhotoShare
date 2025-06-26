@@ -21,6 +21,17 @@ export const uploadNewAlbumPhotos = async (custom_id: string, photos: any[]) => 
   return await photoRepo.insertAlbumPhotos(custom_id, photos);
 };
 
+// 単一ファイルアップロード用の新しい関数
+export const uploadSinglePhoto = async (photo: any) => {
+  // 1つの写真をアップロード
+  return await photoRepo.insertPhotos([photo]);
+};
+
+export const uploadSingleAlbumPhoto = async (custom_id: string, photo: any) => {
+  // アルバムに1つの写真をアップロード
+  return await photoRepo.insertAlbumPhotos(custom_id, [photo]);
+};
+
 export const removePhoto = async (id: number) => {
   return await photoRepo.deletePhotoById(id);
 };
