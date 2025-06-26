@@ -283,11 +283,51 @@ export const updateWorldInfoForPhotos = async (custom_id: string | null) => {
 };
 
 export const deletePhotoById = async (id: number) => {
-  const result = await pool.query('DELETE FROM photos WHERE id = $1 RETURNING id', [id]);
-  if (result.rowCount === 0) {
-    return { error: 'Photo not found', status: 404 };
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // 削除前にファイルパス情報を取得
+    const selectResult = await client.query(
+      'SELECT stored_filename, thumbnail_filename FROM photos WHERE id = $1',
+      [id]
+    );
+    
+    if (selectResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return { error: 'Photo not found', status: 404 };
+    }
+    
+    const { stored_filename, thumbnail_filename } = selectResult.rows[0];
+    
+    // データベースから削除
+    await client.query('DELETE FROM photos WHERE id = $1', [id]);
+    
+    // MinIOからファイル削除
+    try {
+      if (stored_filename) {
+        await minio.removeObject(MINIO_BUCKET, stored_filename);
+        console.log(`Deleted file from MinIO: ${stored_filename}`);
+      }
+      if (thumbnail_filename) {
+        await minio.removeObject(MINIO_BUCKET, thumbnail_filename);
+        console.log(`Deleted thumbnail from MinIO: ${thumbnail_filename}`);
+      }
+    } catch (minioError) {
+      console.error('Failed to delete files from MinIO:', minioError);
+      // MinIOエラーでもトランザクションは継続（ファイルが既に存在しない場合もある）
+    }
+    
+    await client.query('COMMIT');
+    return { message: 'Photo deleted successfully' };
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Failed to delete photo:', error);
+    return { error: 'Failed to delete photo', status: 500 };
+  } finally {
+    client.release();
   }
-  return { message: 'Photo deleted successfully' };
 };
 
 export const getAlbumThumbnail = async (custom_id: string) => {
