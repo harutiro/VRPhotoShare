@@ -1,4 +1,4 @@
-import { Title, Text, Group, Button, SimpleGrid, Image, Stack, Badge, Box, Overlay, Center, Loader } from '@mantine/core';
+import { Title, Text, Group, Button, SimpleGrid, Image, Stack, Badge, Box, Overlay, Center, Loader, Progress } from '@mantine/core';
 import { Dropzone, IMAGE_MIME_TYPE } from '@mantine/dropzone';
 import { IconUpload, IconPhoto, IconX, IconCheck, IconClock, IconRefresh, IconTrash } from '@tabler/icons-react';
 import { useState, useEffect, useRef } from 'react';
@@ -76,6 +76,28 @@ export const FileUploadSection = ({
   
   const currentFiles = batchUploadState.files.map(item => item.file);
   const isUploading = batchUploadState.isUploading;
+
+  // 全体の進捗を計算する関数
+  const calculateOverallProgress = (): { percentage: number; completedFiles: number; totalFiles: number } => {
+    const totalFiles = batchUploadState.files.length;
+    if (totalFiles === 0) return { percentage: 0, completedFiles: 0, totalFiles: 0 };
+
+    // 各ファイルの進捗を合計して平均を出す
+    const totalProgress = batchUploadState.files.reduce((sum, file) => {
+      if (file.status === 'success') return sum + 100;
+      if (file.status === 'error') return sum + 100; // エラーも完了として扱う
+      if (file.status === 'uploading') return sum + file.progress;
+      return sum; // pending は 0
+    }, 0);
+
+    const completedFiles = batchUploadState.files.filter(
+      f => f.status === 'success' || f.status === 'error'
+    ).length;
+
+    const percentage = Math.round(totalProgress / totalFiles);
+    
+    return { percentage, completedFiles, totalFiles };
+  };
 
   // ページ全体でのドラッグアンドドロップイベントを処理
   useEffect(() => {
@@ -236,7 +258,7 @@ export const FileUploadSection = ({
 
   const successCount = batchUploadState.files.filter(f => f.status === 'success').length;
   const errorCount = batchUploadState.files.filter(f => f.status === 'error').length;
-  const totalFiles = currentFiles.length;
+  const { percentage: overallPercentage, completedFiles, totalFiles } = calculateOverallProgress();
 
   return (
     <Box pos="relative">
@@ -361,24 +383,46 @@ export const FileUploadSection = ({
         {/* アップロードボタンとコントロール（上部に配置） */}
         {currentFiles.length > 0 && (
           <Stack gap="md">
-            {/* 進捗表示 */}
+            {/* 全体進捗表示 */}
             {totalFiles > 0 && (
-              <Group justify="space-between">
-                <Text size="sm" fw={500}>
-                  進捗: {successCount + errorCount} / {totalFiles} ファイル
-                </Text>
-                <Group gap="sm">
-                  {successCount > 0 && (
-                    <Badge color="green" variant="light">
-                      成功: {successCount}
-                    </Badge>
-                  )}
-                  {errorCount > 0 && (
-                    <Badge color="red" variant="light">
-                      エラー: {errorCount}
-                    </Badge>
-                  )}
+              <Box>
+                <Group justify="space-between" mb="xs">
+                  <Text size="lg" fw={600}>
+                    全体の進捗: {overallPercentage}%
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    {completedFiles} / {totalFiles} ファイル完了
+                  </Text>
                 </Group>
+                <Progress 
+                  value={overallPercentage} 
+                  size="xl" 
+                  radius="md"
+                  color={overallPercentage === 100 ? 'green' : 'blue'}
+                  striped={isUploading}
+                  animated={isUploading}
+                />
+              </Box>
+            )}
+
+            {/* 詳細統計 */}
+            {totalFiles > 0 && (
+              <Group justify="center" gap="lg">
+                {successCount > 0 && (
+                  <Badge color="green" variant="light" size="md">
+                    ✅ 成功: {successCount}
+                  </Badge>
+                )}
+                {errorCount > 0 && (
+                  <Badge color="red" variant="light" size="md">
+                    ❌ エラー: {errorCount}
+                  </Badge>
+                )}
+                {(totalFiles - completedFiles) > 0 && (
+                  <Badge color="gray" variant="light" size="md">
+                    ⏳ 残り: {totalFiles - completedFiles}
+                  </Badge>
+                )}
               </Group>
             )}
             
