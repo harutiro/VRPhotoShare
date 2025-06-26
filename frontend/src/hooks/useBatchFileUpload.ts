@@ -1,10 +1,14 @@
 import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 import axios from 'axios';
-import { v4 as uuidv4 } from 'uuid';
 import type { FileWithPath, FileUploadItem, BatchUploadState, EncodedFile } from '../types/upload';
 
 const MAX_RETRY_COUNT = 3;
+
+// uuidの代わりに使用するシンプルなID生成関数
+const generateId = (): string => {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+};
 
 export const useBatchFileUpload = (customId?: string, onSuccess?: () => void) => {
   const [uploadState, setUploadState] = useState<BatchUploadState>({
@@ -106,7 +110,7 @@ export const useBatchFileUpload = (customId?: string, onSuccess?: () => void) =>
 
   const setFiles = useCallback((files: FileWithPath[]) => {
     const fileItems: FileUploadItem[] = files.map(file => ({
-      id: uuidv4(),
+      id: generateId(),
       file,
       status: 'pending' as const,
       progress: 0,
