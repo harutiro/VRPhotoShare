@@ -1,6 +1,6 @@
 import { pool } from '../db/pgPool';
 import { minio, MINIO_BUCKET } from '../utils/minioClient';
-import { extractPngPackage } from '../utils/pngMeta';
+import { extractPngPackage, extractPngMetadata } from '../utils/pngMeta';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
 
@@ -11,9 +11,18 @@ const buildFileUrl = (filename: string): string => {
 };
 
 export const getAllPhotos = async (sort: string) => {
-  const result = await pool.query(
-    `SELECT id, filename as name, stored_filename, image_data, thumbnail_filename FROM photos WHERE album_id IS NULL ORDER BY created_at ${sort.toUpperCase()}`
+  // taken_atカラムが存在するかチェック
+  const columnCheck = await pool.query(
+    `SELECT column_name FROM information_schema.columns WHERE table_name = 'photos' AND column_name = 'taken_at'`
   );
+  
+  const hasTakenAt = columnCheck.rows.length > 0;
+  
+  const query = hasTakenAt 
+    ? `SELECT id, filename as name, stored_filename, image_data, thumbnail_filename, taken_at, created_at FROM photos WHERE album_id IS NULL ORDER BY COALESCE(taken_at, created_at) ${sort.toUpperCase()}`
+    : `SELECT id, filename as name, stored_filename, image_data, thumbnail_filename, created_at FROM photos WHERE album_id IS NULL ORDER BY created_at ${sort.toUpperCase()}`;
+    
+  const result = await pool.query(query);
   return result.rows.map(row => {
     const url = buildFileUrl(row.stored_filename);
     const thumbnailUrl = row.thumbnail_filename ? buildFileUrl(row.thumbnail_filename) : null;
@@ -26,19 +35,40 @@ export const getAllPhotos = async (sort: string) => {
         // JSONパースエラーは無視
       }
     }
-    return { id: row.id, name: row.name, url, thumbnailUrl, image_data: row.image_data, file_date: fileDate };
+    return { 
+      id: row.id, 
+      name: row.name, 
+      url, 
+      thumbnailUrl, 
+      image_data: row.image_data, 
+      file_date: fileDate,
+      taken_at: row.taken_at,
+      created_at: row.created_at 
+    };
   });
 };
 
 export const getPhotosByAlbumCustomId = async (custom_id: string, sort: string) => {
-  const result = await pool.query(
-    `SELECT p.id, p.filename as name, p.stored_filename, p.image_data, p.thumbnail_filename, p.created_at
-     FROM photos p
-     JOIN albums a ON p.album_id = a.id
-     WHERE a.custom_id = $1
-     ORDER BY p.created_at ${sort.toUpperCase()}`,
-    [custom_id]
+  // taken_atカラムが存在するかチェック
+  const columnCheck = await pool.query(
+    `SELECT column_name FROM information_schema.columns WHERE table_name = 'photos' AND column_name = 'taken_at'`
   );
+  
+  const hasTakenAt = columnCheck.rows.length > 0;
+  
+  const query = hasTakenAt
+    ? `SELECT p.id, p.filename as name, p.stored_filename, p.image_data, p.thumbnail_filename, p.taken_at, p.created_at
+       FROM photos p
+       JOIN albums a ON p.album_id = a.id
+       WHERE a.custom_id = $1
+       ORDER BY COALESCE(p.taken_at, p.created_at) ${sort.toUpperCase()}`
+    : `SELECT p.id, p.filename as name, p.stored_filename, p.image_data, p.thumbnail_filename, p.created_at
+       FROM photos p
+       JOIN albums a ON p.album_id = a.id
+       WHERE a.custom_id = $1
+       ORDER BY p.created_at ${sort.toUpperCase()}`;
+       
+  const result = await pool.query(query, [custom_id]);
   return result.rows.map(row => {
     const url = buildFileUrl(row.stored_filename);
     const thumbnailUrl = row.thumbnail_filename ? buildFileUrl(row.thumbnail_filename) : null;
@@ -51,7 +81,16 @@ export const getPhotosByAlbumCustomId = async (custom_id: string, sort: string) 
         // JSONパースエラーは無視
       }
     }
-    return { id: row.id, name: row.name, url, thumbnailUrl, image_data: row.image_data, file_date: fileDate };
+    return { 
+      id: row.id, 
+      name: row.name, 
+      url, 
+      thumbnailUrl, 
+      image_data: row.image_data, 
+      file_date: fileDate,
+      taken_at: row.taken_at,
+      created_at: row.created_at 
+    };
   });
 };
 
@@ -67,8 +106,14 @@ export const insertPhotos = async (photos: any[]) => {
       const uuidName = `photos/${uuid}.${ext}`;
       const buffer = Buffer.from(data, 'base64');
       let imageMeta: string | null = null;
+      let takenAt: Date | null = null;
       if (ext && ext.toLowerCase() === 'png') {
         imageMeta = extractPngPackage(buffer);
+        // 撮影時間も抽出
+        const metadata = extractPngMetadata(buffer);
+        if (metadata.takenAt) {
+          takenAt = metadata.takenAt;
+        }
       }
       // サムネイルもphotos/thumbnails/に保存
       const thumbUuidName = `photos/thumbnails/${uuid}.webp`;
@@ -88,10 +133,24 @@ export const insertPhotos = async (photos: any[]) => {
         .toBuffer();
       await minio.putObject(MINIO_BUCKET, uuidName, buffer);
       await minio.putObject(MINIO_BUCKET, thumbUuidName, thumbBuffer);
-      await client.query(
-        'INSERT INTO photos (album_id, filename, stored_filename, image_data, thumbnail_filename) VALUES ($1, $2, $3, $4, $5)',
-        [null, name, uuidName, imageMeta, thumbUuidName]
+      
+      // taken_atカラムが存在するかチェック
+      const columnCheck = await client.query(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = 'photos' AND column_name = 'taken_at'`
       );
+      const hasTakenAt = columnCheck.rows.length > 0;
+      
+      if (hasTakenAt) {
+        await client.query(
+          'INSERT INTO photos (album_id, filename, stored_filename, image_data, thumbnail_filename, taken_at) VALUES ($1, $2, $3, $4, $5, $6)',
+          [null, name, uuidName, imageMeta, thumbUuidName, takenAt]
+        );
+      } else {
+        await client.query(
+          'INSERT INTO photos (album_id, filename, stored_filename, image_data, thumbnail_filename) VALUES ($1, $2, $3, $4, $5)',
+          [null, name, uuidName, imageMeta, thumbUuidName]
+        );
+      }
     }
     await client.query('COMMIT');
     return { message: `${photos.length} photos uploaded successfully.` };
@@ -121,8 +180,14 @@ export const insertAlbumPhotos = async (custom_id: string, photos: any[]) => {
       const uuidName = `albums/${custom_id}/${uuid}.${ext}`;
       const buffer = Buffer.from(data, 'base64');
       let imageMeta: string | null = null;
+      let takenAt: Date | null = null;
       if (ext && ext.toLowerCase() === 'png') {
         imageMeta = extractPngPackage(buffer);
+        // 撮影時間も抽出
+        const metadata = extractPngMetadata(buffer);
+        if (metadata.takenAt) {
+          takenAt = metadata.takenAt;
+        }
       }
       // サムネイルもアルバムディレクトリ内のthumbnails/に保存
       const thumbUuidName = `albums/${custom_id}/thumbnails/${uuid}.webp`;
@@ -142,10 +207,24 @@ export const insertAlbumPhotos = async (custom_id: string, photos: any[]) => {
         .toBuffer();
       await minio.putObject(MINIO_BUCKET, uuidName, buffer);
       await minio.putObject(MINIO_BUCKET, thumbUuidName, thumbBuffer);
-      await client.query(
-        'INSERT INTO photos (album_id, filename, stored_filename, image_data, thumbnail_filename) VALUES ($1, $2, $3, $4, $5)',
-        [albumId, name, uuidName, imageMeta, thumbUuidName]
+      
+      // taken_atカラムが存在するかチェック
+      const columnCheck = await client.query(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = 'photos' AND column_name = 'taken_at'`
       );
+      const hasTakenAt = columnCheck.rows.length > 0;
+      
+      if (hasTakenAt) {
+        await client.query(
+          'INSERT INTO photos (album_id, filename, stored_filename, image_data, thumbnail_filename, taken_at) VALUES ($1, $2, $3, $4, $5, $6)',
+          [albumId, name, uuidName, imageMeta, thumbUuidName, takenAt]
+        );
+      } else {
+        await client.query(
+          'INSERT INTO photos (album_id, filename, stored_filename, image_data, thumbnail_filename) VALUES ($1, $2, $3, $4, $5)',
+          [albumId, name, uuidName, imageMeta, thumbUuidName]
+        );
+      }
     }
     await client.query('COMMIT');
     return { message: `${photos.length} photos uploaded successfully.` };

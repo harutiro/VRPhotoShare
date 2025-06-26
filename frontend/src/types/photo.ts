@@ -6,6 +6,8 @@ export interface Photo {
   thumbnailUrl?: string;
   image_data?: string;
   _assignedWorld?: string;
+  taken_at?: string;
+  created_at?: string;
 }
 
 export interface Album {
