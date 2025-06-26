@@ -58,14 +58,16 @@ export const insertPhotos = async (photos: any[]) => {
     for (const photo of photos) {
       const { name, data } = photo;
       const ext = name.split('.').pop();
-      const uuidName = `${uuidv4()}.${ext}`;
+      const uuid = uuidv4();
+      // アルバムなしの写真はphotos/ディレクトリに保存
+      const uuidName = `photos/${uuid}.${ext}`;
       const buffer = Buffer.from(data, 'base64');
       let imageMeta: string | null = null;
       if (ext && ext.toLowerCase() === 'png') {
         imageMeta = extractPngPackage(buffer);
       }
-      // サムネイル生成
-      const thumbUuidName = `thumbnails/${uuidv4()}.webp`;
+      // サムネイルもphotos/thumbnails/に保存
+      const thumbUuidName = `photos/thumbnails/${uuid}.webp`;
       const sharpImg = sharp(buffer);
       const metadata = await sharpImg.metadata();
       let resizeOptions = {};
@@ -110,14 +112,16 @@ export const insertAlbumPhotos = async (custom_id: string, photos: any[]) => {
     for (const photo of photos) {
       const { name, data } = photo;
       const ext = name.split('.').pop();
-      const uuidName = `${uuidv4()}.${ext}`;
+      const uuid = uuidv4();
+      // アルバムごとのディレクトリに保存
+      const uuidName = `albums/${custom_id}/${uuid}.${ext}`;
       const buffer = Buffer.from(data, 'base64');
       let imageMeta: string | null = null;
       if (ext && ext.toLowerCase() === 'png') {
         imageMeta = extractPngPackage(buffer);
       }
-      // サムネイル生成
-      const thumbUuidName = `thumbnails/${uuidv4()}.webp`;
+      // サムネイルもアルバムディレクトリ内のthumbnails/に保存
+      const thumbUuidName = `albums/${custom_id}/thumbnails/${uuid}.webp`;
       const sharpImg = sharp(buffer);
       const metadata = await sharpImg.metadata();
       let resizeOptions = {};
