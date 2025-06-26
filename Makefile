@@ -2,7 +2,8 @@ MINIO_ROOT_USER ?= minioadmin
 MINIO_ROOT_PASSWORD ?= minioadmin123
 MINIO_BUCKET ?= vrphotoshare
 
-ENV_FILE = .env
+ENV_FILE = .env.dev
+PROD_ENV_FILE = .env.prod
 
 .PHONY: create-minio-bucket set-minio-public minio-setup dev setup stop clean db-init deploy deploy-stop deploy-clean migrate migrate-status migrate-to migrate-prod migrate-prod-force backup-db restore-db logs logs-backend logs-frontend logs-db logs-minio help
 
@@ -53,7 +54,7 @@ clean:
 
 # 5. DB初期化（init.sqlを流し直したい場合など）
 db-init:
-	docker compose exec db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/init.sql
+	docker compose exec db psql -U $$(grep POSTGRES_USER $(ENV_FILE) | cut -d '=' -f2) -d $$(grep POSTGRES_DB $(ENV_FILE) | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/init.sql
 
 # 本番デプロイ用（docker composeでバックグラウンド起動）
 deploy:
@@ -78,10 +79,10 @@ migrate:
 	@for file in $$(ls db/migrations/*.sql | sort); do \
 		filename=$$(basename $$file .sql); \
 		echo "Checking migration: $$filename"; \
-		result=$$(docker compose exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -t -c "SELECT version FROM schema_migrations WHERE version = '$$filename';" 2>/dev/null || echo ""); \
+		result=$$(docker compose exec -T db psql -U $$(grep POSTGRES_USER $(ENV_FILE) | cut -d '=' -f2) -d $$(grep POSTGRES_DB $(ENV_FILE) | cut -d '=' -f2) -t -c "SELECT version FROM schema_migrations WHERE version = '$$filename';" 2>/dev/null || echo ""); \
 		if [ -z "$$result" ] || [ "$$(echo $$result | xargs)" = "" ]; then \
 			echo "⚡ Applying migration: $$filename"; \
-			docker compose exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/migrations/$$(basename $$file); \
+			docker compose exec -T db psql -U $$(grep POSTGRES_USER $(ENV_FILE) | cut -d '=' -f2) -d $$(grep POSTGRES_DB $(ENV_FILE) | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/migrations/$$(basename $$file); \
 		else \
 			echo "✅ Migration already applied: $$filename"; \
 		fi; \
@@ -92,7 +93,7 @@ migrate:
 migrate-status:
 	@echo "📊 マイグレーション状況を確認中..."
 	@echo "=== 適用済みマイグレーション ==="
-	@docker compose exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -c "SELECT version, applied_at FROM schema_migrations ORDER BY version;" 2>/dev/null || echo "❌ schema_migrationsテーブルが見つかりません"
+	@docker compose exec -T db psql -U $$(grep POSTGRES_USER $(ENV_FILE) | cut -d '=' -f2) -d $$(grep POSTGRES_DB $(ENV_FILE) | cut -d '=' -f2) -c "SELECT version, applied_at FROM schema_migrations ORDER BY version;" 2>/dev/null || echo "❌ schema_migrationsテーブルが見つかりません"
 	@echo ""
 	@echo "=== 利用可能なマイグレーション ==="
 	@ls db/migrations/*.sql 2>/dev/null || echo "❌ マイグレーションファイルが見つかりません"
@@ -108,10 +109,10 @@ migrate-to:
 		filename=$$(basename $$file .sql); \
 		version=$$(echo $$filename | cut -d'_' -f1); \
 		if [ "$$version" -le "$(VERSION)" ]; then \
-			result=$$(docker compose exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -t -c "SELECT version FROM schema_migrations WHERE version = '$$filename';" 2>/dev/null || echo ""); \
+			result=$$(docker compose exec -T db psql -U $$(grep POSTGRES_USER $(ENV_FILE) | cut -d '=' -f2) -d $$(grep POSTGRES_DB $(ENV_FILE) | cut -d '=' -f2) -t -c "SELECT version FROM schema_migrations WHERE version = '$$filename';" 2>/dev/null || echo ""); \
 			if [ -z "$$result" ] || [ "$$(echo $$result | xargs)" = "" ]; then \
 				echo "⚡ Applying migration: $$filename"; \
-				docker compose exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/migrations/$$(basename $$file); \
+				docker compose exec -T db psql -U $$(grep POSTGRES_USER $(ENV_FILE) | cut -d '=' -f2) -d $$(grep POSTGRES_DB $(ENV_FILE) | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/migrations/$$(basename $$file); \
 			else \
 				echo "✅ Migration already applied: $$filename"; \
 			fi; \
@@ -133,10 +134,10 @@ migrate-prod:
 		for file in $$(ls db/migrations/*.sql | sort); do \
 			filename=$$(basename $$file .sql); \
 			echo "Checking migration: $$filename"; \
-			result=$$(docker compose -f docker-compose.prod.yml exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -t -c "SELECT version FROM schema_migrations WHERE version = '$$filename';" 2>/dev/null || echo ""); \
+			result=$$(docker compose -f docker-compose.prod.yml exec -T db psql -U $$(grep POSTGRES_USER $(PROD_ENV_FILE) | cut -d '=' -f2) -d $$(grep POSTGRES_DB $(PROD_ENV_FILE) | cut -d '=' -f2) -t -c "SELECT version FROM schema_migrations WHERE version = '$$filename';" 2>/dev/null || echo ""); \
 			if [ -z "$$result" ] || [ "$$(echo $$result | xargs)" = "" ]; then \
 				echo "⚡ Applying migration: $$filename"; \
-				docker compose -f docker-compose.prod.yml exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/migrations/$$(basename $$file); \
+				docker compose -f docker-compose.prod.yml exec -T db psql -U $$(grep POSTGRES_USER $(PROD_ENV_FILE) | cut -d '=' -f2) -d $$(grep POSTGRES_DB $(PROD_ENV_FILE) | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/migrations/$$(basename $$file); \
 			else \
 				echo "✅ Migration already applied: $$filename"; \
 			fi; \
@@ -152,10 +153,10 @@ migrate-prod-force:
 	@for file in $$(ls db/migrations/*.sql | sort); do \
 		filename=$$(basename $$file .sql); \
 		echo "Checking migration: $$filename"; \
-		result=$$(docker compose -f docker-compose.prod.yml exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -t -c "SELECT version FROM schema_migrations WHERE version = '$$filename';" 2>/dev/null || echo ""); \
+		result=$$(docker compose -f docker-compose.prod.yml exec -T db psql -U $$(grep POSTGRES_USER $(PROD_ENV_FILE) | cut -d '=' -f2) -d $$(grep POSTGRES_DB $(PROD_ENV_FILE) | cut -d '=' -f2) -t -c "SELECT version FROM schema_migrations WHERE version = '$$filename';" 2>/dev/null || echo ""); \
 		if [ -z "$$result" ] || [ "$$(echo $$result | xargs)" = "" ]; then \
 			echo "⚡ Applying migration: $$filename"; \
-			docker compose -f docker-compose.prod.yml exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/migrations/$$(basename $$file); \
+			docker compose -f docker-compose.prod.yml exec -T db psql -U $$(grep POSTGRES_USER $(PROD_ENV_FILE) | cut -d '=' -f2) -d $$(grep POSTGRES_DB $(PROD_ENV_FILE) | cut -d '=' -f2) -f /docker-entrypoint-initdb.d/migrations/$$(basename $$file); \
 		else \
 			echo "✅ Migration already applied: $$filename"; \
 		fi; \
@@ -166,7 +167,7 @@ migrate-prod-force:
 backup-db:
 	@echo "💾 データベースバックアップを作成中..."
 	@mkdir -p backups
-	@docker compose exec -T db pg_dump -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) > backups/backup_$$(date +%Y%m%d_%H%M%S).sql
+	@docker compose exec -T db pg_dump -U $$(grep POSTGRES_USER $(ENV_FILE) | cut -d '=' -f2) -d $$(grep POSTGRES_DB $(ENV_FILE) | cut -d '=' -f2) > backups/backup_$$(date +%Y%m%d_%H%M%S).sql
 	@echo "✅ バックアップ完了: backups/backup_$$(date +%Y%m%d_%H%M%S).sql"
 
 # データベースリストア
@@ -180,7 +181,7 @@ restore-db:
 	@read -p "本当に実行しますか？ (yes/no): " confirm; \
 	if [ "$$confirm" = "yes" ]; then \
 		echo "🔄 データベースリストア中..."; \
-		docker compose exec -T db psql -U $$(grep POSTGRES_USER .env | cut -d '=' -f2) -d $$(grep POSTGRES_DB .env | cut -d '=' -f2) < $(BACKUP_FILE); \
+		docker compose exec -T db psql -U $$(grep POSTGRES_USER $(ENV_FILE) | cut -d '=' -f2) -d $$(grep POSTGRES_DB $(ENV_FILE) | cut -d '=' -f2) < $(BACKUP_FILE); \
 		echo "✅ リストア完了"; \
 	else \
 		echo "❌ リストアがキャンセルされました。"; \
