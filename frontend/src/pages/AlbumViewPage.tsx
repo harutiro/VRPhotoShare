@@ -39,6 +39,9 @@ export const AlbumViewPage = () => {
     handleSelectAllChange
   } = usePhotoSelection(photos);
   const worldGroups = useWorldGrouping(photos);
+  
+  // 実際の表示順序に合わせたフラットな写真配列を作成
+  const displayOrderPhotos = Object.entries(worldGroups).flatMap(([, groupPhotos]) => groupPhotos);
   const { 
     isZipping, 
     downloadProgress, 
@@ -84,6 +87,26 @@ export const AlbumViewPage = () => {
     if (currentPhoto?.id === photoId) closeModal();
   };
 
+  // ナビゲーション機能（実際の表示順序に基づく）
+  const getCurrentPhotoIndex = () => {
+    if (!currentPhoto || !displayOrderPhotos.length) return 0;
+    return displayOrderPhotos.findIndex(photo => photo.id === currentPhoto.id);
+  };
+
+  const handleNextPhoto = () => {
+    const currentIndex = getCurrentPhotoIndex();
+    if (currentIndex < displayOrderPhotos.length - 1) {
+      setCurrentPhoto(displayOrderPhotos[currentIndex + 1]);
+    }
+  };
+
+  const handlePrevPhoto = () => {
+    const currentIndex = getCurrentPhotoIndex();
+    if (currentIndex > 0) {
+      setCurrentPhoto(displayOrderPhotos[currentIndex - 1]);
+    }
+  };
+
   const handleSortChange = () => {
     setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
   };
@@ -122,6 +145,10 @@ export const AlbumViewPage = () => {
         onClose={closeModal}
         onDelete={handlePhotoDelete}
         onDownload={handleIndividualDownload}
+        photos={displayOrderPhotos}
+        currentPhotoIndex={getCurrentPhotoIndex()}
+        onNext={handleNextPhoto}
+        onPrev={handlePrevPhoto}
       />
 
       <AlbumEditModal
