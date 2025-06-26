@@ -1,4 +1,4 @@
-import { Title, Text, Group, Button, SimpleGrid, Image, Switch, Stack, Badge, Box, Overlay, Center, Loader } from '@mantine/core';
+import { Title, Text, Group, Button, SimpleGrid, Image, Stack, Badge, Box, Overlay, Center, Loader } from '@mantine/core';
 import { Dropzone, IMAGE_MIME_TYPE } from '@mantine/dropzone';
 import { IconUpload, IconPhoto, IconX, IconCheck, IconClock, IconRefresh, IconTrash } from '@tabler/icons-react';
 import { useState, useEffect, useRef } from 'react';
@@ -6,20 +6,14 @@ import type { FileWithPath, BatchUploadState, FileUploadItem } from '../types/up
 
 interface FileUploadSectionProps {
   customId?: string;
-  // 従来の一括アップロード用
-  files: FileWithPath[];
-  uploading: boolean;
-  onFilesSelect: (files: FileWithPath[]) => void;
+  // バッチアップロード用（分割アップロードのみ）
+  batchUploadState: BatchUploadState;
+  onBatchFilesSelect: (files: FileWithPath[]) => void;
+  onBatchUploadStart: () => void;
+  onBatchRetryFile: (fileId: string) => Promise<void>;
+  onBatchRemoveFile: (fileId: string) => void;
+  onBatchClearFiles: () => void;
   onFilesReject: () => void;
-  onUpload: () => void;
-  onClearSelection: () => void;
-  // 新しいバッチアップロード用
-  batchUploadState?: BatchUploadState;
-  onBatchFilesSelect?: (files: FileWithPath[]) => void;
-  onBatchUploadStart?: () => void;
-  onBatchRetryFile?: (fileId: string) => Promise<void>;
-  onBatchRemoveFile?: (fileId: string) => void;
-  onBatchClearFiles?: () => void;
 }
 
 const getStatusIcon = (status: FileUploadItem['status']) => {
@@ -69,30 +63,19 @@ const getStatusText = (status: FileUploadItem['status']) => {
 
 export const FileUploadSection = ({
   customId,
-  files,
-  uploading,
-  onFilesSelect,
-  onFilesReject,
-  onUpload,
-  onClearSelection,
   batchUploadState,
   onBatchFilesSelect,
   onBatchUploadStart,
   onBatchRetryFile,
   onBatchRemoveFile,
-  onBatchClearFiles
+  onBatchClearFiles,
+  onFilesReject
 }: FileUploadSectionProps) => {
-  const [useBatchUpload, setUseBatchUpload] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
   
-  const currentFiles = useBatchUpload 
-    ? batchUploadState?.files.map(item => item.file) || []
-    : files;
-  
-  const isUploading = useBatchUpload 
-    ? batchUploadState?.isUploading || false
-    : uploading;
+  const currentFiles = batchUploadState.files.map(item => item.file);
+  const isUploading = batchUploadState.isUploading;
 
   // ページ全体でのドラッグアンドドロップイベントを処理
   useEffect(() => {
@@ -154,45 +137,25 @@ export const FileUploadSection = ({
       document.removeEventListener('dragover', handleDragOver);
       document.removeEventListener('drop', handleDrop);
     };
-  }, [useBatchUpload, onBatchFilesSelect, onFilesSelect, onFilesReject]);
+  }, [onBatchFilesSelect, onFilesReject]);
 
   const handleFilesSelect = (newFiles: FileWithPath[]) => {
     setIsDragging(false);
     dragCounterRef.current = 0;
-    if (useBatchUpload && onBatchFilesSelect) {
-      onBatchFilesSelect(newFiles);
-    } else {
-      onFilesSelect(newFiles);
-    }
-  };
-
-  const handleUpload = () => {
-    if (useBatchUpload && onBatchUploadStart) {
-      onBatchUploadStart();
-    } else {
-      onUpload();
-    }
-  };
-
-  const handleClearSelection = () => {
-    if (useBatchUpload && onBatchClearFiles) {
-      onBatchClearFiles();
-    } else {
-      onClearSelection();
-    }
+    onBatchFilesSelect(newFiles);
   };
 
   // バッチアップロード用のファイルアイテムを取得
   const getBatchFileItem = (file: FileWithPath): FileUploadItem | undefined => {
-    return batchUploadState?.files.find(item => item.file === file);
+    return batchUploadState.files.find(item => item.file === file);
   };
 
   const renderFilePreview = (file: FileWithPath, index: number) => {
     const imageUrl = URL.createObjectURL(file);
-    const fileItem = useBatchUpload ? getBatchFileItem(file) : undefined;
+    const fileItem = getBatchFileItem(file);
     
     return (
-      <Box key={useBatchUpload ? fileItem?.id || index : index} pos="relative">
+      <Box key={fileItem?.id || index} pos="relative">
         <Image 
           src={imageUrl} 
           onLoad={() => URL.revokeObjectURL(imageUrl)} 
@@ -201,8 +164,8 @@ export const FileUploadSection = ({
           style={{ objectFit: 'cover' }}
         />
         
-        {/* バッチアップロード時のステータス表示 */}
-        {useBatchUpload && fileItem && (
+        {/* ステータス表示 */}
+        {fileItem && (
           <>
             {/* ステータスオーバーレイ */}
             {(fileItem.status === 'uploading' || fileItem.status === 'success' || fileItem.status === 'error') && (
@@ -236,7 +199,7 @@ export const FileUploadSection = ({
             </Badge>
             
             {/* アクションボタン */}
-            {fileItem.status === 'error' && onBatchRetryFile && fileItem.retryCount < 3 && (
+            {fileItem.status === 'error' && fileItem.retryCount < 3 && (
               <Button
                 size="xs"
                 variant="filled"
@@ -251,7 +214,7 @@ export const FileUploadSection = ({
               </Button>
             )}
             
-            {(fileItem.status === 'pending' || fileItem.status === 'error') && onBatchRemoveFile && (
+            {(fileItem.status === 'pending' || fileItem.status === 'error') && (
               <Button
                 size="xs"
                 variant="filled"
@@ -271,8 +234,8 @@ export const FileUploadSection = ({
     );
   };
 
-  const successCount = useBatchUpload ? batchUploadState?.files.filter(f => f.status === 'success').length || 0 : 0;
-  const errorCount = useBatchUpload ? batchUploadState?.files.filter(f => f.status === 'error').length || 0 : 0;
+  const successCount = batchUploadState.files.filter(f => f.status === 'success').length;
+  const errorCount = batchUploadState.files.filter(f => f.status === 'error').length;
   const totalFiles = currentFiles.length;
 
   return (
@@ -314,24 +277,15 @@ export const FileUploadSection = ({
           
           <Text c="dimmed" mb="lg">
             {customId
-              ? 'このアルバムに写真が追加されます。画面のどこにでもファイルをドラッグしてアップロードできます。'
-              : 'ここで写真をアップロードすると、ホームページに表示されます。画面のどこにでもファイルをドラッグしてアップロードできます。'
+              ? 'このアルバムに写真が追加されます。ファイルは1つずつ安全にアップロードされ、100MB超過時のエラーを防ぎます。画面のどこにでもファイルをドラッグしてアップロードできます。'
+              : 'ここで写真をアップロードすると、ホームページに表示されます。ファイルは1つずつ安全にアップロードされ、100MB超過時のエラーを防ぎます。画面のどこにでもファイルをドラッグしてアップロードできます。'
             }
           </Text>
 
-          {/* アップロード方式の選択 */}
-          <Group mb="lg">
-            <Switch
-              checked={useBatchUpload}
-              onChange={(event) => setUseBatchUpload(event.currentTarget.checked)}
-              label={useBatchUpload ? "分割アップロード（推奨）" : "一括アップロード"}
-              description={
-                useBatchUpload 
-                  ? "ファイルを1つずつ送信します。100MB超過時も安全です。" 
-                  : "全ファイルを一度に送信します。合計100MB以下の場合のみ。"
-              }
-            />
-          </Group>
+          {/* 分割アップロードの説明 */}
+          <Badge color="blue" variant="light" size="lg" mb="lg">
+            🔒 安全な分割アップロード方式
+          </Badge>
         </div>
         
         <Dropzone
@@ -369,7 +323,7 @@ export const FileUploadSection = ({
               <Box ta="center">
                 <IconUpload size="3.2rem" stroke={1.5} color="#228be6" />
                 <Text size="xl" inline mt="md" c="blue">
-                  ファイルをドロップしてアップロード
+                  ファイルをドロップして分割アップロード
                 </Text>
                 <Text size="sm" c="dimmed" inline mt={7} display="block">
                   複数ファイルOK、1ファイル10MBまで
@@ -394,7 +348,7 @@ export const FileUploadSection = ({
                   画像をここにドラッグまたはクリックして選択
                 </Text>
                 <Text size="sm" c="dimmed" inline mt={7} display="block">
-                  複数ファイルOK、1ファイル10MBまで
+                  複数ファイルOK、1ファイル10MBまで（分割アップロード）
                 </Text>
                 <Text size="xs" c="dimmed" inline mt={2} display="block">
                   💡 画面のどこにでもファイルをドラッグできます
@@ -407,8 +361,8 @@ export const FileUploadSection = ({
         {/* アップロードボタンとコントロール（上部に配置） */}
         {currentFiles.length > 0 && (
           <Stack gap="md">
-            {/* 進捗表示（バッチアップロード時） */}
-            {useBatchUpload && totalFiles > 0 && (
+            {/* 進捗表示 */}
+            {totalFiles > 0 && (
               <Group justify="space-between">
                 <Text size="sm" fw={500}>
                   進捗: {successCount + errorCount} / {totalFiles} ファイル
@@ -432,18 +386,18 @@ export const FileUploadSection = ({
             <Group justify="flex-end">
               <Button 
                 variant="default" 
-                onClick={handleClearSelection} 
+                onClick={onBatchClearFiles} 
                 disabled={isUploading}
               >
                 選択をクリア
               </Button>
               <Button 
-                onClick={handleUpload} 
+                onClick={onBatchUploadStart} 
                 loading={isUploading}
-                disabled={useBatchUpload && batchUploadState?.allCompleted}
+                disabled={batchUploadState.allCompleted}
                 size="lg"
               >
-                {useBatchUpload ? '分割アップロード開始' : `${currentFiles.length}枚の写真をアップロード`}
+                分割アップロード開始
               </Button>
             </Group>
           </Stack>
