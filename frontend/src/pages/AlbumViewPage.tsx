@@ -11,7 +11,6 @@ import { PhotoModal } from '../components/PhotoModal';
 import { AlbumEditModal } from '../components/AlbumEditModal';
 import { AlbumHeader } from '../components/AlbumHeader';
 import { PhotoGrid } from '../components/PhotoGrid';
-import { DownloadProgressModal } from '../components/DownloadProgressModal';
 
 // Hooks
 import { useAlbumData } from '../hooks/useAlbumData';
@@ -114,6 +113,8 @@ export const AlbumViewPage = () => {
 
   return (
     <>
+
+
       {/* モーダル */}
       <PhotoModal
         photo={currentPhoto}
@@ -131,15 +132,210 @@ export const AlbumViewPage = () => {
         onEditNameChange={setEditName}
       />
 
-      <DownloadProgressModal
-        opened={downloadProgress.isActive}
-        progress={downloadProgress}
-        onCancel={cancelDownload}
-      />
+      {/* HTMLベース進捗表示モーダル */}
+      {downloadProgress.isActive && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 10000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '30px',
+            borderRadius: '15px',
+            minWidth: '450px',
+            maxWidth: '600px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+            color: 'black'
+          }}>
+            {/* タイトル */}
+            <h2 style={{ 
+              margin: '0 0 25px 0', 
+              textAlign: 'center',
+              color: '#333',
+              fontSize: '20px',
+              fontWeight: '600'
+            }}>
+              一括ダウンロード進行中
+            </h2>
+
+            {/* 現在のステップバッジ */}
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '25px'
+            }}>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '8px 16px',
+                borderRadius: '20px',
+                fontSize: '14px',
+                fontWeight: '500',
+                backgroundColor: downloadProgress.currentStep === 'downloading' ? '#3b82f6' :
+                                downloadProgress.currentStep === 'zipping' ? '#f59e0b' :
+                                downloadProgress.currentStep === 'saving' ? '#8b5cf6' : '#10b981',
+                color: 'white'
+              }}>
+                {downloadProgress.currentStep === 'downloading' && '📥 写真をダウンロード中'}
+                {downloadProgress.currentStep === 'zipping' && '📦 ZIPファイルを作成中'}
+                {downloadProgress.currentStep === 'saving' && '💾 ファイルを保存中'}
+                {downloadProgress.currentStep === 'completed' && '✅ ダウンロード完了！'}
+              </span>
+            </div>
+
+            {/* 全体進捗 */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}>
+                <span>全体の進捗</span>
+                <span style={{ fontWeight: '600' }}>{downloadProgress.overallProgress}%</span>
+              </div>
+              <div style={{
+                background: '#e5e7eb',
+                height: '12px',
+                borderRadius: '6px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  background: downloadProgress.currentStep === 'downloading' ? '#3b82f6' :
+                            downloadProgress.currentStep === 'zipping' ? '#f59e0b' :
+                            downloadProgress.currentStep === 'saving' ? '#8b5cf6' : '#10b981',
+                  height: '100%',
+                  width: `${downloadProgress.overallProgress}%`,
+                  transition: 'width 0.3s ease',
+                  borderRadius: '6px'
+                }}></div>
+              </div>
+            </div>
+
+            {/* 写真ダウンロード詳細 */}
+            {downloadProgress.currentStep === 'downloading' && (
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}>
+                  <span>写真ダウンロード</span>
+                  <span>{downloadProgress.completedPhotos} / {downloadProgress.totalPhotos}</span>
+                </div>
+                <div style={{
+                  background: '#e5e7eb',
+                  height: '8px',
+                  borderRadius: '4px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    background: '#3b82f6',
+                    height: '100%',
+                    width: `${(downloadProgress.completedPhotos / downloadProgress.totalPhotos) * 100}%`,
+                    transition: 'width 0.3s ease',
+                    borderRadius: '4px'
+                  }}></div>
+                </div>
+              </div>
+            )}
+
+            {/* ZIP圧縮詳細 */}
+            {downloadProgress.currentStep === 'zipping' && (
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}>
+                  <span>ZIP圧縮進捗</span>
+                  <span>{downloadProgress.zipProgress}%</span>
+                </div>
+                <div style={{
+                  background: '#e5e7eb',
+                  height: '8px',
+                  borderRadius: '4px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    background: '#f59e0b',
+                    height: '100%',
+                    width: `${downloadProgress.zipProgress}%`,
+                    transition: 'width 0.3s ease',
+                    borderRadius: '4px'
+                  }}></div>
+                </div>
+              </div>
+            )}
+
+            {/* 現在のファイル名 */}
+            {downloadProgress.currentPhotoName && (
+              <div style={{
+                textAlign: 'center',
+                fontSize: '13px',
+                color: '#6b7280',
+                marginBottom: '20px',
+                wordBreak: 'break-all',
+                lineHeight: '1.4'
+              }}>
+                {downloadProgress.currentPhotoName}
+              </div>
+            )}
+
+            {/* キャンセルボタン */}
+            {downloadProgress.canCancel && downloadProgress.currentStep !== 'completed' && (
+              <div style={{ textAlign: 'center' }}>
+                <button 
+                  onClick={cancelDownload}
+                  style={{
+                    background: '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseOver={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#b91c1c'}
+                  onMouseOut={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#dc2626'}
+                >
+                  ❌ キャンセル
+                </button>
+              </div>
+            )}
+
+            {/* 完了メッセージ */}
+            {downloadProgress.currentStep === 'completed' && (
+              <div style={{
+                textAlign: 'center',
+                color: '#10b981',
+                fontWeight: '500',
+                fontSize: '14px'
+              }}>
+                {downloadProgress.totalPhotos}枚の写真のダウンロードが完了しました！
+              </div>
+            )}
+          </div>
+        </div>
+              )}
 
       {/* メインコンテンツ */}
       <Container my="md" pos="relative">
-        {/* 詳細進捗モーダルがある場合は基本的なロードingオーバーレイは非表示 */}
+        {/* 詳細進捗モーダルがある場合は基本的なLoadingOverlayは非表示 */}
         <LoadingOverlay 
           visible={isZipping && !downloadProgress.isActive} 
           overlayProps={{ radius: "sm", blur: 2 }} 

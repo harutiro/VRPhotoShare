@@ -11,6 +11,7 @@ export interface DownloadProgress {
   completedPhotos: number;
   currentPhotoName: string;
   overallProgress: number; // 0-100
+  zipProgress: number; // ZIP圧縮の進捗 0-100
   isActive: boolean;
   canCancel: boolean;
 }
@@ -28,7 +29,8 @@ export const usePhotoActions = (
     completedPhotos: 0,
     currentPhotoName: '',
     overallProgress: 0,
-    isActive: false,
+    zipProgress: 0,
+    isActive: false, // 初期状態では非アクティブ
     canCancel: true
   });
 
@@ -71,7 +73,7 @@ export const usePhotoActions = (
       abortControllerRef.current = null;
     }
     setIsZipping(false);
-    setDownloadProgress(prev => ({ ...prev, isActive: false }));
+    setDownloadProgress(prev => ({ ...prev, isActive: false, zipProgress: 0 }));
     notifications.show({ 
       title: 'キャンセル', 
       message: 'ダウンロードがキャンセルされました', 
@@ -90,15 +92,17 @@ export const usePhotoActions = (
     const photosToDownload = photos.filter(p => selectedPhotos.includes(p.id));
     
     // 進捗状態を初期化
-    setDownloadProgress({
-      currentStep: 'downloading',
+    const initialProgress = {
+      currentStep: 'downloading' as const,
       totalPhotos: photosToDownload.length,
       completedPhotos: 0,
-      currentPhotoName: '',
+      currentPhotoName: `${photosToDownload.length}枚の写真をダウンロード準備中...`,
       overallProgress: 0,
+      zipProgress: 0,
       isActive: true,
       canCancel: true
-    });
+    };
+    setDownloadProgress(initialProgress);
 
     try {
       const zip = new JSZip();
@@ -112,12 +116,12 @@ export const usePhotoActions = (
           throw new Error('Download cancelled');
         }
 
-        // 現在の写真の進捗を更新
+        // 現在処理中の写真の進捗を更新（ダウンロード開始時）
         setDownloadProgress(prev => ({
           ...prev,
           currentPhotoName: photo.name,
           completedPhotos: i,
-          overallProgress: Math.round((i / photosToDownload.length) * 70) // ダウンロードは全体の70%
+          overallProgress: Math.round((i / photosToDownload.length) * 70) // ダウンロード開始時
         }));
 
         try {
@@ -127,12 +131,29 @@ export const usePhotoActions = (
           }
           const blob = await response.blob();
           zip.file(photo.name, blob);
+          
+          // ダウンロード完了後の進捗を更新
+          const completedCount = i + 1;
+          const newProgress = Math.round((completedCount / photosToDownload.length) * 70);
+          setDownloadProgress(prev => ({
+            ...prev,
+            completedPhotos: completedCount,
+            overallProgress: newProgress
+          }));
+          
         } catch (fetchError) {
           if (signal.aborted) {
             throw new Error('Download cancelled');
           }
           console.warn(`Failed to download ${photo.name}:`, fetchError);
-          // 個別の写真ダウンロード失敗は続行
+          
+          // エラーでも完了扱いにして進捗を進める
+          const completedCount = i + 1;
+          setDownloadProgress(prev => ({
+            ...prev,
+            completedPhotos: completedCount,
+            overallProgress: Math.round((completedCount / photosToDownload.length) * 70)
+          }));
         }
       }
 
@@ -143,6 +164,7 @@ export const usePhotoActions = (
         completedPhotos: photosToDownload.length,
         currentPhotoName: 'ZIPファイルを作成中...',
         overallProgress: 70,
+        zipProgress: 0, // ZIP進捗をリセット
         canCancel: false // ZIP作成中はキャンセル不可
       }));
 
@@ -150,6 +172,17 @@ export const usePhotoActions = (
         type: 'blob',
         compression: 'DEFLATE',
         compressionOptions: { level: 6 }
+      }, (metadata) => {
+        // ZIP圧縮の進捗を更新 (70% - 90%の範囲)
+        const zipProgress = Math.round(metadata.percent);
+        const overallProgress = Math.round(70 + (zipProgress * 0.2)); // 70% + (圧縮進捗 * 20%)
+        
+        setDownloadProgress(prev => ({
+          ...prev,
+          currentPhotoName: `ZIPファイルを作成中... ${zipProgress}%`,
+          overallProgress: overallProgress,
+          zipProgress: zipProgress
+        }));
       });
 
       // 保存フェーズ
@@ -157,7 +190,8 @@ export const usePhotoActions = (
         ...prev,
         currentStep: 'saving',
         currentPhotoName: 'ファイルを保存中...',
-        overallProgress: 90
+        overallProgress: 90,
+        zipProgress: 100 // ZIP圧縮完了
       }));
 
       saveAs(content, `${album?.name || 'album'}.zip`);
@@ -167,7 +201,8 @@ export const usePhotoActions = (
         ...prev,
         currentStep: 'completed',
         currentPhotoName: 'ダウンロード完了',
-        overallProgress: 100
+        overallProgress: 100,
+        zipProgress: 100 // ZIP圧縮完了
       }));
 
       notifications.show({ 
@@ -178,7 +213,7 @@ export const usePhotoActions = (
 
       // 2秒後に進捗表示を非表示
       setTimeout(() => {
-        setDownloadProgress(prev => ({ ...prev, isActive: false }));
+        setDownloadProgress(prev => ({ ...prev, isActive: false, zipProgress: 0 }));
       }, 2000);
       
     } catch (error) {
@@ -187,7 +222,7 @@ export const usePhotoActions = (
         return;
       }
       
-      setDownloadProgress(prev => ({ ...prev, isActive: false }));
+      setDownloadProgress(prev => ({ ...prev, isActive: false, zipProgress: 0 }));
       notifications.show({ 
         title: 'エラー', 
         message: 'ZIPファイルの作成に失敗しました', 

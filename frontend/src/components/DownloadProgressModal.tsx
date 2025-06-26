@@ -64,6 +64,9 @@ export const DownloadProgressModal = ({ opened, progress, onCancel }: DownloadPr
       closeButtonProps={{ 
         style: { display: progress.currentStep === 'completed' ? 'block' : 'none' } 
       }}
+      zIndex={10000}
+      overlayProps={{ opacity: 0.7, blur: 3 }}
+      withCloseButton={progress.currentStep === 'completed'}
     >
       <Stack gap="lg">
         {/* 現在のステップ表示 */}
@@ -82,7 +85,7 @@ export const DownloadProgressModal = ({ opened, progress, onCancel }: DownloadPr
         <Stack gap="xs">
           <Group justify="space-between">
             <Text size="sm" fw={500}>全体の進捗</Text>
-            <Text size="sm" c="dimmed">{progress.overallProgress}%</Text>
+            <Text size="sm" c="dimmed" fw={600}>{progress.overallProgress}%</Text>
           </Group>
           <Progress 
             value={progress.overallProgress} 
@@ -90,6 +93,7 @@ export const DownloadProgressModal = ({ opened, progress, onCancel }: DownloadPr
             radius="md" 
             color={getStepColor()}
             animated={progress.currentStep !== 'completed'}
+            style={{ minHeight: '12px' }}
           />
         </Stack>
 
