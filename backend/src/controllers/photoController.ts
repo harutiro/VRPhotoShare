@@ -41,6 +41,26 @@ export const uploadSingleAlbumPhoto = async (c: Context) => {
   return c.json(result, 201);
 };
 
+// ワールド情報の手動補完エンドポイント
+export const updateWorldInfo = async (c: Context) => {
+  try {
+    await photoService.updateWorldInfoForAllPhotos();
+    return c.json({ message: 'World info updated successfully for all photos' });
+  } catch (error) {
+    return c.json({ error: 'Failed to update world info', detail: String(error) }, 500);
+  }
+};
+
+export const updateAlbumWorldInfo = async (c: Context) => {
+  const { custom_id } = c.req.param();
+  try {
+    await photoService.updateWorldInfoForAlbumPhotos(custom_id);
+    return c.json({ message: `World info updated successfully for album ${custom_id}` });
+  } catch (error) {
+    return c.json({ error: 'Failed to update world info', detail: String(error) }, 500);
+  }
+};
+
 export const deletePhoto = async (c: Context) => {
   const { id } = c.req.param();
   const result = await photoService.removePhoto(Number(id));

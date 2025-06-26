@@ -149,6 +149,135 @@ export const insertAlbumPhotos = async (custom_id: string, photos: any[]) => {
   }
 };
 
+// ワールド情報の自動補完機能
+export const updateWorldInfoForPhotos = async (custom_id: string | null) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // 対象の写真を取得（アルバム指定か全体かによって分岐）
+    let query: string;
+    let params: any[] = [];
+    
+    if (custom_id) {
+      // アルバム内の写真のみ
+      query = `
+        SELECT p.id, p.image_data, p.created_at
+        FROM photos p
+        JOIN albums a ON p.album_id = a.id
+        WHERE a.custom_id = $1
+        ORDER BY p.created_at ASC
+      `;
+      params = [custom_id];
+    } else {
+      // 全体写真（アルバムなし）
+      query = `
+        SELECT id, image_data, created_at
+        FROM photos
+        WHERE album_id IS NULL
+        ORDER BY created_at ASC
+      `;
+    }
+    
+    const result = await client.query(query, params);
+    const photos = result.rows;
+    
+    // 各写真のメタデータを解析
+    const photosWithMeta = photos.map(photo => {
+      let worldName: string | null = null;
+      let photoDate: Date | null = null;
+      let hasWorld = false;
+      
+      if (photo.image_data) {
+        try {
+          const meta = JSON.parse(photo.image_data);
+          if (meta && meta.world && meta.world.name) {
+            worldName = meta.world.name;
+            hasWorld = true;
+          }
+          if (meta && meta.date) {
+            photoDate = new Date(meta.date);
+          }
+        } catch (e) {
+          // メタデータが不正な場合は無視
+        }
+      }
+      
+      // dateがない場合はcreated_atを使用
+      if (!photoDate) {
+        photoDate = new Date(photo.created_at);
+      }
+      
+      return {
+        id: photo.id,
+        worldName,
+        photoDate,
+        hasWorld,
+        originalMeta: photo.image_data
+      };
+    });
+    
+    // ワールド情報がない写真に対して、近い時間のワールド情報を割り当て
+    for (const photo of photosWithMeta) {
+      if (!photo.hasWorld && photo.photoDate) {
+        let minDiff = Infinity;
+        let nearestWorld: string | null = null;
+        
+        // 他の写真の中で最も時間が近いワールド情報を探す
+        for (const other of photosWithMeta) {
+          if (other.hasWorld && other.worldName && other.photoDate) {
+            const diff = Math.abs(photo.photoDate.getTime() - other.photoDate.getTime());
+            // 24時間以内の写真のみを対象とする
+            if (diff < minDiff && diff <= 24 * 60 * 60 * 1000) {
+              minDiff = diff;
+              nearestWorld = other.worldName;
+            }
+          }
+        }
+        
+        // 近い時間のワールド情報が見つかった場合、メタデータを更新
+        if (nearestWorld) {
+          let updatedMeta: any = {};
+          
+          // 既存のメタデータがある場合はそれをベースにする
+          if (photo.originalMeta) {
+            try {
+              updatedMeta = JSON.parse(photo.originalMeta);
+            } catch (e) {
+              // パース失敗時は空オブジェクトから開始
+            }
+          }
+          
+          // ワールド情報を追加/更新
+          updatedMeta.world = {
+            name: nearestWorld,
+            id: `auto-assigned-${Date.now()}`, // 自動割り当てであることを示すID
+            auto_assigned: true // 自動割り当てフラグ
+          };
+          
+          // データベースを更新
+          await client.query(
+            'UPDATE photos SET image_data = $1 WHERE id = $2',
+            [JSON.stringify(updatedMeta), photo.id]
+          );
+          
+          console.log(`Updated photo ${photo.id} with world info: ${nearestWorld}`);
+        }
+      }
+    }
+    
+    await client.query('COMMIT');
+    console.log(`World info update completed for ${custom_id || 'all photos'}`);
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Failed to update world info:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 export const deletePhotoById = async (id: number) => {
   const result = await pool.query('DELETE FROM photos WHERE id = $1 RETURNING id', [id]);
   if (result.rowCount === 0) {
