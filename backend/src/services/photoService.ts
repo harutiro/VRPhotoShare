@@ -1,5 +1,10 @@
 import * as photoRepo from '../repositories/photoRepository';
 
+interface PhotoUpload {
+  name: string;
+  data: string;
+}
+
 export const fetchPhotos = async (sort: string) => {
   return await photoRepo.getAllPhotos(sort);
 };
@@ -8,7 +13,7 @@ export const fetchAlbumPhotos = async (custom_id: string, sort: string) => {
   return await photoRepo.getPhotosByAlbumCustomId(custom_id, sort);
 };
 
-export const uploadNewPhotos = async (photos: any[]) => {
+export const uploadNewPhotos = async (photos: PhotoUpload[]) => {
   // MinIO保存・メタデータ抽出・DB登録
   const result = await photoRepo.insertPhotos(photos);
   
@@ -20,7 +25,7 @@ export const uploadNewPhotos = async (photos: any[]) => {
   return result;
 };
 
-export const uploadNewAlbumPhotos = async (custom_id: string, photos: any[]) => {
+export const uploadNewAlbumPhotos = async (custom_id: string, photos: PhotoUpload[]) => {
   // MinIO保存・メタデータ抽出・DB登録
   const result = await photoRepo.insertAlbumPhotos(custom_id, photos);
   
@@ -33,7 +38,7 @@ export const uploadNewAlbumPhotos = async (custom_id: string, photos: any[]) => 
 };
 
 // 単一ファイルアップロード用の新しい関数
-export const uploadSinglePhoto = async (photo: any) => {
+export const uploadSinglePhoto = async (photo: PhotoUpload) => {
   // 1つの写真をアップロード
   const result = await photoRepo.insertPhotos([photo]);
   
@@ -45,7 +50,7 @@ export const uploadSinglePhoto = async (photo: any) => {
   return result;
 };
 
-export const uploadSingleAlbumPhoto = async (custom_id: string, photo: any) => {
+export const uploadSingleAlbumPhoto = async (custom_id: string, photo: PhotoUpload) => {
   // アルバムに1つの写真をアップロード
   const result = await photoRepo.insertAlbumPhotos(custom_id, [photo]);
   

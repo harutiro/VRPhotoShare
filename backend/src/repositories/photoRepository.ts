@@ -4,6 +4,11 @@ import { extractPngPackage, extractPngMetadata } from '../utils/pngMeta';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
 
+interface PhotoUpload {
+  name: string;
+  data: string;
+}
+
 // URL構築のヘルパー関数
 const buildFileUrl = (filename: string): string => {
   const minioPublicUrl = process.env.MINIO_PUBLIC_URL || 'http://localhost:9000';
@@ -94,7 +99,7 @@ export const getPhotosByAlbumCustomId = async (custom_id: string, sort: string) 
   });
 };
 
-export const insertPhotos = async (photos: any[]) => {
+export const insertPhotos = async (photos: PhotoUpload[]) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -162,7 +167,7 @@ export const insertPhotos = async (photos: any[]) => {
   }
 };
 
-export const insertAlbumPhotos = async (custom_id: string, photos: any[]) => {
+export const insertAlbumPhotos = async (custom_id: string, photos: PhotoUpload[]) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -244,7 +249,7 @@ export const updateWorldInfoForPhotos = async (custom_id: string | null) => {
     
     // 対象の写真を取得（アルバム指定か全体かによって分岐）
     let query: string;
-    let params: any[] = [];
+    let params: string[] = [];
     
     if (custom_id) {
       // アルバム内の写真のみ
@@ -324,7 +329,7 @@ export const updateWorldInfoForPhotos = async (custom_id: string | null) => {
         
         // 近い時間のワールド情報が見つかった場合、メタデータを更新
         if (nearestWorld) {
-          let updatedMeta: any = {};
+          let updatedMeta: Record<string, unknown> = {};
           
           // 既存のメタデータがある場合はそれをベースにする
           if (photo.originalMeta) {

@@ -35,9 +35,8 @@ export function extractPngPackage(buffer: Buffer): string | null {
           while (ptr < chunkData.length && chunkData[ptr] !== 0x00) ptr++;
           ptr++;
           if (ptr < chunkData.length) {
-            const text = chunkData.slice(ptr).toString('utf8');
-            // eslint-disable-next-line no-control-regex
-            return text.replace(/\u0000/g, '');
+            const text = chunkData.slice(ptr).toString('utf8').split('\0')[0];
+            return text;
           }
         }
       }
@@ -85,9 +84,8 @@ export function extractPngMetadata(buffer: Buffer): PngMetadata {
           while (ptr < chunkData.length && chunkData[ptr] !== 0x00) ptr++;
           ptr++;
           if (ptr < chunkData.length) {
-            const text = chunkData.slice(ptr).toString('utf8');
-            // eslint-disable-next-line no-control-regex
-            metadata.description = text.replace(/\u0000/g, '');
+            const text = chunkData.slice(ptr).toString('utf8').split('\0')[0];
+            metadata.description = text;
           }
         }
         
@@ -100,7 +98,7 @@ export function extractPngMetadata(buffer: Buffer): PngMetadata {
           while (ptr < chunkData.length && chunkData[ptr] !== 0x00) ptr++; // translated keyword
           ptr++;
           if (ptr < chunkData.length) {
-            const dateStr = chunkData.slice(ptr).toString('utf8').replace(/\u0000/g, '');
+            const dateStr = chunkData.slice(ptr).toString('utf8').split('\0')[0];
             const date = new Date(dateStr);
             if (!isNaN(date.getTime())) {
               metadata.takenAt = date;

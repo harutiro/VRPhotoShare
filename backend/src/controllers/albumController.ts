@@ -19,8 +19,8 @@ export const createAlbum = async (c: Context) => {
     }
     const album = await albumService.createNewAlbum(custom_id, name);
     return c.json(album, 201);
-  } catch (error: any) {
-    if (error.code === '23505') {
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
       return c.json({ error: 'This album ID is already taken.' }, 409);
     }
     console.error('Failed to create album:', error);
